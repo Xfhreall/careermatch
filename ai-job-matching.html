@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Career Match — Job Matching Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131c;
+    --surface2: #1c1c2b;
+    --border: rgba(255,255,255,0.07);
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --card-glow: 0 0 40px rgba(108,99,255,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  html { scroll-behavior: smooth; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* GRID BG */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    background: rgba(10,10,15,0.8);
+    position: sticky;
+    top: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .header-badge {
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.3);
+    color: var(--accent);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 60px 24px 100px;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .hero-tag {
+    display: inline-block;
+    background: linear-gradient(90deg, rgba(108,99,255,0.2), rgba(255,101,132,0.2));
+    border: 1px solid rgba(108,99,255,0.3);
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 16px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 480px;
+    margin: 0 auto;
+    font-weight: 300;
+  }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+    row-gap: 12px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  .pipe-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pipe-step .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .pipe-arrow {
+    color: var(--border);
+    font-size: 18px;
+    padding: 0 4px;
+    user-select: none;
+  }
+
+  /* FORM CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 40px;
+    box-shadow: var(--card-glow);
+    animation: fadeUp 0.6s 0.2s ease both;
+    margin-bottom: 32px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+
+  .form-group { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .upload-zone {
+    border: 2px dashed rgba(108,99,255,0.3);
+    border-radius: 14px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(108,99,255,0.03);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.08);
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .upload-hint { font-size: 12px; color: var(--muted); }
+  .file-chosen {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(67,233,123,0.1);
+    border: 1px solid rgba(67,233,123,0.3);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--accent3);
+  }
+  .file-chosen.show { display: flex; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #9b59b6);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(108,99,255,0.4);
+  }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .submit-btn .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+  /* LOADING */
+  .loading-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .load-step {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.4;
+    transition: opacity 0.4s;
+  }
+  .load-step.active { opacity: 1; color: var(--accent); }
+  .load-step.done { opacity: 0.7; color: var(--accent3); }
+
+  /* RESULTS */
+  #results { display: none; animation: fadeUp 0.5s ease both; }
+
+  /* SCORE CARDS */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .score-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .score-card.overall::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .score-card.skill::before { background: linear-gradient(90deg, var(--accent2), #ff9a56); }
+  .score-card.exp::before { background: linear-gradient(90deg, var(--accent3), #00d4ff); }
+  
+  .score-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    margin: 8px 0 4px;
+  }
+  .score-card.overall .score-num { color: var(--accent); }
+  .score-card.skill .score-num { color: var(--accent2); }
+  .score-card.exp .score-num { color: var(--accent3); }
+  .score-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+    width: 0;
+  }
+  .overall .progress-fill { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .skill .progress-fill { background: linear-gradient(90deg, var(--accent2), #ff9a56); }
+  .exp .progress-fill { background: linear-gradient(90deg, var(--accent3), #00d4ff); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* JOB MATCH CARD */
+  .job-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .job-card:hover { border-color: rgba(108,99,255,0.4); }
+  .job-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .job-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+  }
+  .job-company { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .compat-badge {
+    flex-shrink: 0;
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.3);
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    text-align: center;
+    min-width: 72px;
+  }
+  .compat-badge small { display: block; font-size: 9px; font-weight: 400; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .skill-tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .skill-tag.matched {
+    background: rgba(67,233,123,0.1);
+    color: var(--accent3);
+    border: 1px solid rgba(67,233,123,0.25);
+  }
+  .skill-tag.missing {
+    background: rgba(255,101,132,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(255,101,132,0.25);
+  }
+  .skill-section-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    margin-top: 12px;
+  }
+
+  /* RICH TEXT / MARKDOWN RESULT */
+  .rich-result {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    line-height: 1.75;
+  }
+  .rich-result h1, .rich-result h2, .rich-result h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin: 1.2em 0 0.5em;
+    color: var(--text);
+  }
+  .rich-result h1 { font-size: 22px; }
+  .rich-result h2 { font-size: 18px; color: var(--accent); }
+  .rich-result h3 { font-size: 15px; color: var(--accent2); }
+  .rich-result p { margin-bottom: 0.8em; color: var(--text); }
+  .rich-result ul, .rich-result ol {
+    padding-left: 20px;
+    margin-bottom: 0.8em;
+  }
+  .rich-result li { margin-bottom: 4px; color: var(--text); }
+  .rich-result strong { color: #fff; font-weight: 600; }
+  .rich-result em { color: var(--accent2); font-style: italic; }
+  .rich-result code {
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.2);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.88em;
+    font-family: 'Courier New', monospace;
+    color: #a8b5ff;
+  }
+  .rich-result pre {
+    background: #0d0d16;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  .rich-result pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #cdd6f4;
+  }
+  .rich-result blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    color: var(--muted);
+    font-style: italic;
+    margin: 12px 0;
+  }
+  .rich-result table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .rich-result th {
+    background: rgba(108,99,255,0.1);
+    color: var(--accent);
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .rich-result td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .rich-result hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(255,101,132,0.08);
+    border: 1px solid rgba(255,101,132,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: var(--accent2);
+    font-size: 14px;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* DIVIDER */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; }
+    main { padding: 40px 16px 80px; }
+    .card { padding: 24px 20px; }
+    .score-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .score-num { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <div class="logo-text">Career<span>Match</span></div>
+  </div>
+  <div class="header-badge">AI Powered</div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">n8n Workflow Agent</div>
+    <h1>Find Your <span class="grad">Perfect Job</span><br>with AI</h1>
+    <p>Upload your CV and let our AI match you to the best opportunities — with personalized coaching.</p>
+  </div>
+
+  <!-- PIPELINE VISUALIZATION -->
+  <div class="pipeline">
+    <div class="pipe-step"><span class="dot"></span>CV Upload</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step"><span class="dot" style="background:var(--accent2)"></span>AI Analyzer</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step"><span class="dot" style="background:#ff9a56"></span>Vector Search</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step"><span class="dot" style="background:var(--accent3)"></span>Scoring Engine</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step"><span class="dot" style="background:#00d4ff"></span>Career Coach</div>
+  </div>
+
+  <!-- FORM -->
+  <div class="card" id="formCard">
+    <div class="card-title">
+      <span>📄</span> Upload CV Kamu
+    </div>
+    <div class="card-sub">Sistem kami akan menganalisis CV kamu dan mencocokkan dengan lowongan terbaik secara otomatis.</div>
+
+    <div class="form-group">
+      <label>File CV (PDF atau DOCX)</label>
+      <div class="upload-zone" id="dropZone">
+        <input type="file" id="cvFile" accept=".pdf,.doc,.docx" />
+        <div class="upload-icon">📁</div>
+        <div class="upload-title">Drag & drop atau klik untuk pilih file</div>
+        <div class="upload-hint">Mendukung PDF, DOC, DOCX — Maks. 10MB</div>
+      </div>
+      <div class="file-chosen" id="fileChosen">
+        <span>✅</span>
+        <span id="fileName"></span>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- LOADING STATE -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text">AI sedang menganalisis CV kamu...</div>
+      <div class="loading-steps">
+        <div class="load-step" id="step1">📄 Membaca dan mengekstrak teks CV...</div>
+        <div class="load-step" id="step2">🔒 Anonimisasi data PII...</div>
+        <div class="load-step" id="step3">🔍 Mencari pekerjaan yang cocok di database...</div>
+        <div class="load-step" id="step4">🧠 Menghitung skor kompatibilitas...</div>
+        <div class="load-step" id="step5">🎯 Menyiapkan saran karir & pertanyaan interview...</div>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitForm()">
+      <div class="btn-inner">
+        <span>⚡</span>
+        <span>Analisis CV & Temukan Pekerjaan</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="section-divider">Hasil Analisis</div>
+
+    <!-- SCORE OVERVIEW -->
+    <div class="score-grid" id="scoreGrid" style="display:none">
+      <div class="score-card overall">
+        <div class="score-label">Kompatibilitas</div>
+        <div class="score-num" id="scoreOverall">—</div>
+        <div class="score-label">/ 100</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressOverall"></div></div>
+      </div>
+      <div class="score-card skill">
+        <div class="score-label">Skill Match</div>
+        <div class="score-num" id="scoreSkill">—</div>
+        <div class="score-label">/ 100</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressSkill"></div></div>
+      </div>
+      <div class="score-card exp">
+        <div class="score-label">Pengalaman</div>
+        <div class="score-num" id="scoreExp">—</div>
+        <div class="score-label">/ 100</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressExp"></div></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('jobs')">🎯 Job Matches</button>
+        <button class="tab-btn" onclick="showTab('coaching')">🧑‍💼 Career Coach</button>
+        <button class="tab-btn" onclick="showTab('raw')">📋 Full Report</button>
+      </div>
+
+      <!-- TAB: Job Matches -->
+      <div class="tab-pane active" id="tab-jobs">
+        <div id="jobsList"><p style="color:var(--muted);font-size:14px">Memuat data pekerjaan...</p></div>
+      </div>
+
+      <!-- TAB: Career Coaching -->
+      <div class="tab-pane" id="tab-coaching">
+        <div class="rich-result" id="coachingContent">
+          <p style="color:var(--muted)">Memuat saran karir...</p>
+        </div>
+      </div>
+
+      <!-- TAB: Full Raw Result -->
+      <div class="tab-pane" id="tab-raw">
+        <div class="rich-result" id="rawContent">
+          <p style="color:var(--muted)">Memuat laporan lengkap...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESET -->
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="resetForm()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:10px 24px;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+        ↩ Analisis CV Baru
+      </button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Powered by n8n · GPT-4o · Supabase Vector DB &nbsp;·&nbsp; AI Job Matching Agent v1.0
+</footer>
+
+<script>
+const WEBHOOK_URL = 'https://stephen13.app.n8n.cloud/webhook/ai-job-matching';
+
+// FILE HANDLING
+const fileInput = document.getElementById('cvFile');
+const dropZone = document.getElementById('dropZone');
+const fileChosen = document.getElementById('fileChosen');
+const fileNameEl = document.getElementById('fileName');
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) showFile(e.target.files[0]);
+});
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) {
+    fileInput.files = e.dataTransfer.files;
+    showFile(e.dataTransfer.files[0]);
+  }
+});
+
+function showFile(file) {
+  fileNameEl.textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+  fileChosen.classList.add('show');
+}
+
+// TAB SWITCHING
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// STEP ANIMATION
+let stepInterval;
+function animateSteps() {
+  const steps = ['step1','step2','step3','step4','step5'];
+  let i = 0;
+  steps.forEach(s => document.getElementById(s).className = 'load-step');
+  stepInterval = setInterval(() => {
+    if (i > 0) document.getElementById(steps[i-1]).className = 'load-step done';
+    if (i < steps.length) {
+      document.getElementById(steps[i]).className = 'load-step active';
+      i++;
+    } else {
+      clearInterval(stepInterval);
+    }
+  }, 1800);
+}
+
+// SUBMIT
+async function submitForm() {
+  const file = fileInput.files[0];
+  const errorBox = document.getElementById('errorBox');
+  errorBox.classList.remove('show');
+
+  if (!file) {
+    errorBox.textContent = '⚠️ Silakan upload file CV terlebih dahulu.';
+    errorBox.classList.add('show');
+    return;
+  }
+
+  // Show loading
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('loadingOverlay').classList.add('show');
+  animateSteps();
+
+  const formData = new FormData();
+  formData.append('cv', file);
+  formData.append('filename', file.name);
+
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    clearInterval(stepInterval);
+
+    if (!response.ok) {
+      throw new Error('Server merespons dengan status ' + response.status);
+    }
+
+    const data = await response.json();
+    renderResults(data);
+
+  } catch (err) {
+    clearInterval(stepInterval);
+    document.getElementById('loadingOverlay').classList.remove('show');
+    document.getElementById('submitBtn').disabled = false;
+    errorBox.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+    errorBox.classList.add('show');
+  }
+}
+
+// RENDER RESULTS
+function renderResults(data) {
+  document.getElementById('loadingOverlay').classList.remove('show');
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  // Try to extract structured job data
+  const jobMatches = extractJobMatches(data);
+  const coachingData = extractCoaching(data);
+
+  // Scores
+  if (jobMatches && jobMatches.length > 0) {
+    const top = jobMatches[0];
+    showScores(top);
+    renderJobsList(jobMatches);
+  } else {
+    document.getElementById('scoreGrid').style.display = 'none';
+    document.getElementById('jobsList').innerHTML = '<p style="color:var(--muted);font-size:14px;padding:16px 0">Tidak ada data job match yang terstruktur ditemukan. Lihat tab "Full Report" untuk hasil lengkap.</p>';
+  }
+
+  // Coaching
+  const coachMd = extractMarkdown(coachingData) || extractMarkdown(data);
+  document.getElementById('coachingContent').innerHTML = coachMd 
+    ? marked.parse(coachMd) 
+    : '<p style="color:var(--muted)">Data coaching tidak tersedia dalam respons ini.</p>';
+
+  // Full raw
+  const fullMd = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  const isMarkdown = typeof data === 'string' && (data.includes('#') || data.includes('**') || data.includes('\n-'));
+  document.getElementById('rawContent').innerHTML = isMarkdown
+    ? marked.parse(fullMd)
+    : '<pre style="white-space:pre-wrap;font-size:12px;color:#a0a0c0;font-family:monospace;line-height:1.6">' + escapeHtml(fullMd) + '</pre>';
+
+  // Scroll to results
+  setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth' }), 100);
+}
+
+function showScores(top) {
+  const grid = document.getElementById('scoreGrid');
+  grid.style.display = 'grid';
+
+  const ov = top.compatibility_score || 0;
+  const sk = top.skill_match_score || 0;
+  const ex = top.experience_match_score || 0;
+
+  document.getElementById('scoreOverall').textContent = ov;
+  document.getElementById('scoreSkill').textContent = sk;
+  document.getElementById('scoreExp').textContent = ex;
+
+  setTimeout(() => {
+    document.getElementById('progressOverall').style.width = ov + '%';
+    document.getElementById('progressSkill').style.width = sk + '%';
+    document.getElementById('progressExp').style.width = ex + '%';
+  }, 300);
+}
+
+function renderJobsList(jobs) {
+  const el = document.getElementById('jobsList');
+  if (!jobs || jobs.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:14px">Tidak ada job match ditemukan.</p>';
+    return;
+  }
+  el.innerHTML = jobs.map((job, i) => `
+    <div class="job-card" style="animation: fadeUp 0.4s ${i * 0.08}s ease both">
+      <div class="job-card-top">
+        <div>
+          <div class="job-title">${escapeHtml(job.job_title || 'Posisi Tidak Diketahui')}</div>
+          <div class="job-company">🏢 ${escapeHtml(job.company || 'Perusahaan')}</div>
+        </div>
+        <div class="compat-badge">
+          ${job.compatibility_score || '—'}
+          <small>Score</small>
+        </div>
+      </div>
+      ${job.matched_skills && job.matched_skills.length > 0 ? `
+        <div class="skill-section-label">✅ Skill yang Cocok</div>
+        <div class="skill-tags">
+          ${job.matched_skills.map(s => `<span class="skill-tag matched">${escapeHtml(s)}</span>`).join('')}
+        </div>
+      ` : ''}
+      ${job.skill_gap && job.skill_gap.length > 0 ? `
+        <div class="skill-section-label">📚 Skill yang Perlu Dipelajari</div>
+        <div class="skill-tags">
+          ${job.skill_gap.map(s => `<span class="skill-tag missing">${escapeHtml(s)}</span>`).join('')}
+        </div>
+      ` : ''}
+      ${job.required_years ? `<div style="margin-top:12px;font-size:12px;color:var(--muted)">⏱ Pengalaman Dibutuhkan: ${job.required_years} tahun &nbsp;|&nbsp; Pengalaman Kamu: ${job.candidate_years || 0} tahun</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// PARSE HELPERS
+function extractJobMatches(data) {
+  if (Array.isArray(data)) {
+    const first = data[0];
+    if (first && first.compatibility_score !== undefined) return data;
+    // Try nested
+    for (const item of data) {
+      const found = extractJobMatches(item);
+      if (found) return found;
+    }
+  }
+  if (data && typeof data === 'object') {
+    if (data.job_matches) return data.job_matches;
+    if (data.matches) return data.matches;
+    if (data.jobs) return data.jobs;
+    if (data.results && Array.isArray(data.results)) return data.results;
+    if (data.output && Array.isArray(data.output)) return data.output;
+    // Single job object
+    if (data.compatibility_score !== undefined) return [data];
+  }
+  return null;
+}
+
+function extractCoaching(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (data.coaching) return data.coaching;
+  if (data.career_coaching) return data.career_coaching;
+  if (data.interview_questions) return JSON.stringify(data.interview_questions, null, 2);
+  if (data.coach) return data.coach;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const found = extractCoaching(item);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function extractMarkdown(val) {
+  if (!val) return null;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    const text = val.text || val.content || val.message || val.response || val.output || val.result;
+    if (typeof text === 'string') return text;
+    return JSON.stringify(val, null, 2);
+  }
+  return null;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function resetForm() {
+  fileInput.value = '';
+  fileChosen.classList.remove('show');
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('errorBox').classList.remove('show');
+  document.getElementById('scoreGrid').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Configure marked
+marked.setOptions({ breaks: true, gfm: true });
+</script>
+</body>
+</html>
