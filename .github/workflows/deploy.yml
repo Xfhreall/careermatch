@@ -28,6 +28,11 @@ jobs:
         env:
           NITRO_PRESET: cloudflare-module
 
+      - name: Setup Node.js for Wrangler
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v4
         with:
