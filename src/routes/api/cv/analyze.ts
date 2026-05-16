@@ -1,0 +1,91 @@
+import { createFileRoute } from "@tanstack/react-router"
+
+import { normalizeAnalysisResponse } from "@/features/cv-analysis/normalize"
+import { validateCvFile } from "@/features/cv-analysis/validators"
+
+export const Route = createFileRoute("/api/cv/analyze")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const webhookUrl = process.env.N8N_WEBHOOK_URL
+
+        if (!webhookUrl) {
+          return Response.json(
+            { error: "N8N_WEBHOOK_URL belum dikonfigurasi di server." },
+            { status: 500 }
+          )
+        }
+
+        const incomingForm = await request.formData()
+        const cvValue = incomingForm.get("cv")
+        const filename = incomingForm.get("filename")
+
+        if (!(cvValue instanceof File)) {
+          return Response.json(
+            { error: "Silakan upload file CV terlebih dahulu." },
+            { status: 400 }
+          )
+        }
+
+        const validation = validateCvFile(cvValue)
+
+        if (!validation.ok) {
+          return Response.json({ error: validation.message }, { status: 400 })
+        }
+
+        const outgoingForm = new FormData()
+        outgoingForm.append("cv", cvValue, cvValue.name)
+        outgoingForm.append(
+          "filename",
+          typeof filename === "string" ? filename : cvValue.name
+        )
+
+        let webhookResponse: Response
+
+        try {
+          webhookResponse = await fetch(webhookUrl, {
+            method: "POST",
+            body: outgoingForm,
+          })
+        } catch (error) {
+          return Response.json(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Gagal menghubungi webhook n8n.",
+            },
+            { status: 502 }
+          )
+        }
+
+        const payload = await readWebhookPayload(webhookResponse)
+
+        if (!webhookResponse.ok) {
+          return Response.json(
+            {
+              error:
+                typeof payload === "string"
+                  ? payload
+                  : `Webhook n8n merespons status ${webhookResponse.status}.`,
+              rawResponse: payload,
+            },
+            { status: webhookResponse.status }
+          )
+        }
+
+        return Response.json(normalizeAnalysisResponse(payload))
+      },
+    },
+  },
+})
+
+async function readWebhookPayload(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") ?? ""
+
+  if (contentType.includes("application/json")) {
+    return response.json()
+  }
+
+  return response.text()
+}
