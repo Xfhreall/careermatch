@@ -2,6 +2,8 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
+import { LenisProvider } from "@/shared/components/LenisProvider"
+
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -15,7 +17,12 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "CareerMatch",
+      },
+      {
+        name: "description",
+        content:
+          "CareerMatch membantu jobseeker menganalisis CV dan menemukan pekerjaan paling cocok.",
       },
     ],
     links: [
@@ -36,23 +43,25 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <head>
         <HeadContent />
       </head>
       <body>
-        {children}
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        <LenisProvider>{children}</LenisProvider>
+        {import.meta.env.DEV ? (
+          <TanStackDevtools
+            config={{
+              position: "bottom-right",
+            }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        ) : null}
         <Scripts />
       </body>
     </html>
