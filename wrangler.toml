@@ -1,0 +1,16 @@
+name = "careermatch-capstone"
+main = ".output/server/index.mjs"
+compatibility_date = "2026-05-16"
+compatibility_flags = ["nodejs_compat"]
+account_id = "82a6a4e89ea2c4f761add823c23abcfc"
+no_bundle = true
+
+[env.production]
+
+[assets]
+binding = "ASSETS"
+directory = ".output/public"
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.mjs", "**/*.js"]
