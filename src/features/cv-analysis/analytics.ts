@@ -5,6 +5,7 @@ export type CareerMatchEventName =
   | "cv_analysis_completed"
   | "tab_opened"
   | "analysis_reset"
+  | "report_exported"
 
 export type CareerMatchEvent = {
   name: CareerMatchEventName

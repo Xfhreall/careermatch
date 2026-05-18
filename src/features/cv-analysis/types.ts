@@ -29,3 +29,12 @@ export type NormalizedAnalysisResponse = {
 }
 
 export type AnalysisResult = NormalizedAnalysisResponse
+
+export type AnalysisHistoryItem = {
+  analysisId: string
+  createdAt: string
+  jobMatchCount: number
+  topCompany?: string
+  topRole?: string
+  topScore?: number
+}

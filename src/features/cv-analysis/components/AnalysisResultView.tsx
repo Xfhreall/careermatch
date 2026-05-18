@@ -3,6 +3,7 @@ import {
   ArrowLeftIcon,
   BriefcaseBusinessIcon,
   CheckCircle2Icon,
+  DownloadIcon,
   RotateCcwIcon,
 } from "lucide-react"
 
@@ -54,6 +55,14 @@ export function AnalysisResultView({
     })
   }
 
+  function handlePrintReport() {
+    trackCareerMatchEvent("report_exported", {
+      analysis_id: result.analysisId,
+      export_type: "browser_pdf",
+    })
+    window.print()
+  }
+
   return (
     <motion.div
       animate={{ opacity: 1, y: 0 }}
@@ -76,10 +85,16 @@ export function AnalysisResultView({
             </p>
           </div>
         </div>
-        <Button onClick={handleReset} variant="outline">
-          <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
-          Analisis CV Baru
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+          <Button onClick={handlePrintReport} variant="outline">
+            <DownloadIcon aria-hidden="true" data-icon="inline-start" />
+            Simpan PDF
+          </Button>
+          <Button onClick={handleReset} variant="outline">
+            <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
+            Analisis CV Baru
+          </Button>
+        </div>
       </div>
 
       <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">

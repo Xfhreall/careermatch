@@ -1,48 +1,49 @@
-import { useForm } from "@tanstack/react-form"
-import { useMutation } from "@tanstack/react-query"
-import { motion, useReducedMotion } from "framer-motion"
+import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
   FileTextIcon,
   LoaderCircleIcon,
   UploadIcon,
-} from "lucide-react"
-import * as React from "react"
+} from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
 
-import { Alert, AlertDescription } from "@/shared/components/shadcn/ui/alert"
-import { Badge } from "@/shared/components/shadcn/ui/badge"
-import { Button } from "@/shared/components/shadcn/ui/button"
+import { Alert, AlertDescription } from "@/shared/components/shadcn/ui/alert";
+import { Badge } from "@/shared/components/shadcn/ui/badge";
+import { Button } from "@/shared/components/shadcn/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/shared/components/shadcn/ui/card"
+} from "@/shared/components/shadcn/ui/card";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/shared/components/shadcn/ui/field"
-import { Input } from "@/shared/components/shadcn/ui/input"
-import { Progress } from "@/shared/components/shadcn/ui/progress"
-import { cn } from "@/shared/lib/utils"
-import { getFileExtension, trackCareerMatchEvent } from "../analytics"
-import { analyzeCvRequest } from "../api-client"
-import type { NormalizedAnalysisResponse } from "../types"
-import { formatFileSize, validateCvFile } from "../validators"
+} from "@/shared/components/shadcn/ui/field";
+import { Input } from "@/shared/components/shadcn/ui/input";
+import { Progress } from "@/shared/components/shadcn/ui/progress";
+import { cn } from "@/shared/lib/utils";
+import { getFileExtension, trackCareerMatchEvent } from "../analytics";
+import { analyzeCvRequest } from "../api-client";
+import type { NormalizedAnalysisResponse } from "../types";
+import { formatFileSize, validateCvFile } from "../validators";
 
 type UploadCvFormValues = {
-  cv: File | null
-}
+  cv: File | null;
+};
 
 type UploadCvFormProps = {
-  analyzeCv?: (file: File) => Promise<NormalizedAnalysisResponse>
-  onAnalysisReady: (result: NormalizedAnalysisResponse) => void
-}
+  analyzeCv?: (file: File) => Promise<NormalizedAnalysisResponse>;
+  onAnalysisReady: (result: NormalizedAnalysisResponse) => void;
+};
 
 const PIPELINE_STEPS = [
   "Membaca dan mengekstrak teks CV",
@@ -50,108 +51,112 @@ const PIPELINE_STEPS = [
   "Mencari pekerjaan yang cocok",
   "Menghitung skor kompatibilitas",
   "Menyiapkan saran karier",
-]
+];
 
 export function UploadCvForm({
   analyzeCv = analyzeCvRequest,
   onAnalysisReady,
 }: UploadCvFormProps) {
-  const [dragActive, setDragActive] = React.useState(false)
-  const [submitError, setSubmitError] = React.useState("")
-  const [activeStep, setActiveStep] = React.useState(0)
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
-  const shouldReduceMotion = useReducedMotion()
+  const [dragActive, setDragActive] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState("");
+  const [activeStep, setActiveStep] = React.useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const shouldReduceMotion = useReducedMotion();
   const mutation = useMutation({
     mutationFn: analyzeCv,
     onSuccess: (result) => {
+      toast.success("Analisis CV selesai.");
       trackCareerMatchEvent("cv_analysis_completed", {
         job_match_count: result.jobMatches.length,
         top_score: result.jobMatches[0]?.compatibilityScore ?? null,
-      })
-      onAnalysisReady(result)
+      });
+      onAnalysisReady(result);
     },
     onError: (error) => {
       const message =
         error instanceof Error
           ? error.message
-          : "Gagal terhubung ke server. Coba lagi sebentar."
-      setSubmitError(message)
+          : "Gagal terhubung ke server. Coba lagi sebentar.";
+      setSubmitError(message);
+      toast.error(message);
       trackCareerMatchEvent("cv_analysis_failed", {
         stage: "request",
         error_message: message,
-      })
+      });
     },
-  })
+  });
   const form = useForm({
     defaultValues: {
       cv: null,
     } as UploadCvFormValues,
     onSubmit: async ({ value }) => {
-      setSubmitError("")
-      const file = value.cv
-      const validation = validateCvFile(file)
+      setSubmitError("");
+      const file = value.cv;
+      const validation = validateCvFile(file);
 
       if (!validation.ok) {
-        setSubmitError(validation.message)
+        setSubmitError(validation.message);
+        toast.info(validation.message);
         trackCareerMatchEvent("cv_analysis_failed", {
           stage: "validation",
           error_message: validation.message,
-        })
-        return
+        });
+        return;
       }
 
       if (!file) {
-        return
+        return;
       }
 
       trackCareerMatchEvent("cv_analysis_started", {
         filename: file.name,
         file_extension: getFileExtension(file.name),
         file_size_kb: Math.round(file.size / 1024),
-      })
-      await mutation.mutateAsync(file)
+      });
+      toast.info("CV diupload, analisis sedang berjalan...");
+      await mutation.mutateAsync(file);
     },
-  })
+  });
 
   React.useEffect(() => {
     if (!mutation.isPending) {
-      setActiveStep(0)
-      return
+      setActiveStep(0);
+      return;
     }
 
     const interval = window.setInterval(() => {
       setActiveStep((currentStep) =>
-        Math.min(PIPELINE_STEPS.length - 1, currentStep + 1)
-      )
-    }, 1000)
+        Math.min(PIPELINE_STEPS.length - 1, currentStep + 1),
+      );
+    }, 1000);
 
-    return () => window.clearInterval(interval)
-  }, [mutation.isPending])
+    return () => window.clearInterval(interval);
+  }, [mutation.isPending]);
 
   function handleFileSelection(
     file: File | null,
     source: "drop" | "input",
-    onChange: (value: File | null) => void
+    onChange: (value: File | null) => void,
   ) {
-    onChange(file)
-    setSubmitError("")
+    onChange(file);
+    setSubmitError("");
 
     if (!file) {
-      return
+      return;
     }
 
     trackCareerMatchEvent("cv_file_selected", {
       source,
       file_extension: getFileExtension(file.name),
       file_size_kb: Math.round(file.size / 1024),
-    })
+    });
   }
 
   return (
-    <Card className="overflow-hidden bg-card">
+    <Card className="min-w-0 w-full max-w-full overflow-hidden bg-card">
       <CardHeader className="border-b bg-card p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-col gap-2">
+          <div className="min-w-0 flex flex-col gap-2">
             <p className="font-medium text-muted-foreground text-sm">
               CV Intake
             </p>
@@ -166,21 +171,21 @@ export function UploadCvForm({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-6 sm:p-7">
+      <CardContent className="min-w-0 p-6 sm:p-7">
         <motion.form
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-5"
+          className="min-w-0 flex flex-col gap-5"
           initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
           onSubmit={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            void form.handleSubmit()
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
           }}
           transition={{ duration: shouldReduceMotion ? 0 : 0.28 }}
         >
           <form.Field name="cv">
             {(field) => {
-              const selectedFile = field.state.value
+              const selectedFile = field.state.value;
 
               return (
                 <FieldGroup>
@@ -193,25 +198,25 @@ export function UploadCvForm({
                           : { scale: 1 }
                       }
                       className={cn(
-                        "relative flex min-h-[260px] flex-col items-center justify-center gap-5 overflow-hidden rounded-lg border border-dashed bg-background p-6 text-center transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-                        dragActive && "border-primary bg-muted"
+                        "relative flex min-h-[260px] w-full max-w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-lg border border-dashed bg-background p-6 text-center transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                        dragActive && "border-primary bg-muted",
                       )}
                       disabled={mutation.isPending}
                       onClick={() => fileInputRef.current?.click()}
                       onDragEnter={(event) => {
-                        event.preventDefault()
-                        setDragActive(true)
+                        event.preventDefault();
+                        setDragActive(true);
                       }}
                       onDragLeave={(event) => {
-                        event.preventDefault()
-                        setDragActive(false)
+                        event.preventDefault();
+                        setDragActive(false);
                       }}
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={(event) => {
-                        event.preventDefault()
-                        setDragActive(false)
-                        const file = event.dataTransfer.files.item(0)
-                        handleFileSelection(file, "drop", field.handleChange)
+                        event.preventDefault();
+                        setDragActive(false);
+                        const file = event.dataTransfer.files.item(0);
+                        handleFileSelection(file, "drop", field.handleChange);
                       }}
                       transition={{ duration: 0.2 }}
                       type="button"
@@ -241,8 +246,8 @@ export function UploadCvForm({
                       id="cv-upload"
                       onBlur={field.handleBlur}
                       onChange={(event) => {
-                        const file = event.target.files?.item(0) ?? null
-                        handleFileSelection(file, "input", field.handleChange)
+                        const file = event.target.files?.item(0) ?? null;
+                        handleFileSelection(file, "input", field.handleChange);
                       }}
                       ref={fileInputRef}
                       type="file"
@@ -277,7 +282,7 @@ export function UploadCvForm({
                     ) : null}
                   </Field>
                 </FieldGroup>
-              )
+              );
             }}
           </form.Field>
 
@@ -312,17 +317,17 @@ export function UploadCvForm({
               Analisis CV
             </Button>
             <p className="text-muted-foreground text-sm">
-              Hasil disimpan sementara di browser untuk sesi ini.
+              Hasil tersimpan di database dan bisa dibuka lagi dari riwayat.
             </p>
           </div>
         </motion.form>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function AnalysisPipeline({ activeStep }: { activeStep: number }) {
-  const progress = ((activeStep + 1) / PIPELINE_STEPS.length) * 100
+  const progress = ((activeStep + 1) / PIPELINE_STEPS.length) * 100;
 
   return (
     <motion.div
@@ -347,7 +352,7 @@ function AnalysisPipeline({ activeStep }: { activeStep: number }) {
             animate={{ opacity: 1, x: 0 }}
             className={cn(
               "flex items-center gap-2 text-sm",
-              index <= activeStep ? "text-foreground" : "text-muted-foreground"
+              index <= activeStep ? "text-foreground" : "text-muted-foreground",
             )}
             initial={{ opacity: 0, x: -8 }}
             key={step}
@@ -363,5 +368,5 @@ function AnalysisPipeline({ activeStep }: { activeStep: number }) {
         ))}
       </ol>
     </motion.div>
-  )
+  );
 }
