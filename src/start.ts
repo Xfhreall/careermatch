@@ -60,7 +60,10 @@ const roleAccessMiddleware = createMiddleware().server(
 );
 
 const csrfMiddleware = createCsrfMiddleware({
-  secFetchSite: ["none", "same-origin"],
+  // GET/HEAD/OPTIONS tidak perlu CSRF check — hanya state-changing methods yang perlu
+  filter: async (ctx) =>
+    !["GET", "HEAD", "OPTIONS"].includes(ctx.request.method),
+  secFetchSite: ["none", "same-origin", "same-site"],
 });
 
 export const startInstance = createStart(() => ({
