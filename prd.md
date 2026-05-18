@@ -5,13 +5,13 @@
 
 | Atribut | Detail |
 |---|---|
-| Versi | 2.0.0 — Rebuild from Prototype |
-| Status | Draft untuk Review Engineering |
+| Versi | 2.0.0 — Product Implementation |
+| Status | Implemented dan terintegrasi |
 | Tanggal | 16 Mei 2026 |
 | Produk | CareerMatch / AI Career Match |
-| Fokus Versi | MVP Web App: Upload CV → AI Job Matching → Career Coaching |
+| Fokus Versi | Multi-role Web App: Dashboard Jobseeker → AI Job Matching → Career Coaching → HRD & Superadmin Operations |
 | Role Utama | `jobseeker`, `hrd`, `superadmin` |
-| Integrasi Saat Ini | n8n Webhook, GPT-4o, Supabase Vector DB |
+| Integrasi Saat Ini | Better Auth Google, n8n Webhook, GPT-4o, Supabase Postgres/Storage/Vector DB |
 | Prioritas | P0 — Core Matching Experience |
 
 ---
@@ -20,41 +20,43 @@
 
 CareerMatch adalah aplikasi web berbasis AI yang membantu jobseeker menemukan posisi pekerjaan yang paling sesuai berdasarkan isi CV. Jobseeker mengunggah CV dalam format PDF/DOC/DOCX, lalu sistem menjalankan pipeline AI untuk membaca CV, melakukan anonimisasi data pribadi, mencocokkan profil dengan database lowongan, menghitung skor kompatibilitas, dan memberikan saran karier yang dapat ditindaklanjuti.
 
-Prototype saat ini menunjukkan MVP single-page application dengan integrasi langsung ke webhook n8n. Versi PRD ini menyelaraskan kebutuhan produk dengan perilaku prototype tersebut, sekaligus mendefinisikan fondasi untuk pengembangan ke platform fullstack multi-role pada fase berikutnya.
+Versi awal berupa single-page prototype dengan integrasi langsung ke webhook n8n. Versi PRD ini menyelaraskan kebutuhan produk dengan aplikasi multi-role yang sudah memakai dashboard jobseeker, HRD, superadmin, Better Auth Google, endpoint proxy, dan hasil analisis tersimpan di Supabase.
 
 ### Nilai Utama Produk
 
 - **Untuk jobseeker:** mengetahui lowongan yang paling cocok, skor kecocokan, skill yang sudah sesuai, skill gap, dan rekomendasi karier.
-- **Untuk HRD:** pada fase lanjutan, mengelola lowongan dan melihat kandidat anonim berdasarkan skor kecocokan.
-- **Untuk superadmin:** pada fase lanjutan, mengelola user, lowongan, workflow AI, monitoring, dan konfigurasi sistem.
+- **Untuk HRD:** mengelola lowongan dan melihat kandidat anonim berdasarkan skor kecocokan.
+- **Untuk superadmin:** mengelola user, lowongan, workflow AI, monitoring, dan konfigurasi sistem.
 
 ---
 
-## 2. Analisis Prototype Saat Ini
+## 2. Implementasi dari Prototype
 
-Prototype `ai-job-matching.html` merepresentasikan MVP dengan flow utama berikut:
+Prototype `ai-job-matching.html` direalisasikan ke aplikasi multi-route dengan flow utama berikut:
 
 1. Jobseeker membuka landing page CareerMatch.
-2. Jobseeker mengunggah file CV melalui upload zone.
-3. UI menampilkan nama file dan ukuran file.
-4. Jobseeker menekan tombol **Analisis CV & Temukan Pekerjaan**.
-5. Frontend memvalidasi bahwa file sudah dipilih.
-6. Frontend menampilkan loading state dengan lima tahap pipeline:
+2. User menekan tombol **Login** untuk masuk via Google menggunakan Better Auth.
+3. Setelah session terbaca, aplikasi mengecek role dan mengarahkan jobseeker ke dashboard jobseeker.
+4. Jobseeker mengunggah file CV melalui upload zone di dashboard.
+5. UI menampilkan nama file dan ukuran file.
+6. Jobseeker menekan tombol **Analisis CV**.
+7. Frontend memvalidasi bahwa file sudah dipilih.
+8. Frontend menampilkan loading state dengan lima tahap pipeline:
    - Membaca dan mengekstrak teks CV
    - Anonimisasi data PII
    - Mencari pekerjaan yang cocok di database
    - Menghitung skor kompatibilitas
    - Menyiapkan saran karier dan pertanyaan interview
-7. Frontend mengirim `FormData` ke webhook n8n.
-8. Backend/workflow AI mengembalikan JSON atau Markdown.
-9. Frontend mencoba mengekstrak data job match terstruktur.
-10. Jika job match ditemukan, UI menampilkan score cards dan daftar pekerjaan.
-11. Jika data terstruktur tidak ditemukan, UI tetap menampilkan raw output pada tab **Full Report**.
-12. Jobseeker dapat menekan tombol **Analisis CV Baru** untuk reset state.
+9. Frontend mengirim `FormData` ke server endpoint internal.
+10. Server menyimpan file CV ke private Supabase Storage dan membuat `analysis_jobs`.
+11. Backend/workflow AI mengembalikan JSON atau Markdown.
+12. Server menormalisasi dan menyimpan `analysis_results` ke Supabase Postgres.
+13. Frontend menampilkan score cards, daftar pekerjaan, coaching, dan Full Report.
+14. Jobseeker dapat membuka ulang hasil dari riwayat analisis atau menekan **Analisis CV Baru**.
 
 ### Observasi Engineering
 
-Prototype saat ini belum memiliki autentikasi, database session, riwayat analisis, dashboard HRD, dashboard superadmin, penyimpanan report, atau STAR chatbot interaktif. Karena itu, fitur tersebut dikategorikan sebagai roadmap, bukan MVP utama.
+Implementasi saat ini memakai aplikasi multi-route dengan dashboard jobseeker, HRD, dan superadmin. Analisis CV dilakukan dari dashboard jobseeker, file CV tersimpan private di Supabase Storage, hasil tersimpan di Supabase Postgres, dan setiap role memiliki permukaan fitur sesuai matriks PRD.
 
 ---
 
@@ -88,24 +90,21 @@ Role default untuk pengguna yang ingin menganalisis CV dan menemukan pekerjaan y
 - Mendapatkan saran karier.
 - Melihat laporan lengkap hasil analisis.
 
-**Hak akses MVP:**
+**Hak akses:**
 
 - Mengakses landing page.
 - Mengunggah CV.
-- Melihat hasil analisis pada sesi yang sama.
+- Melihat hasil analisis milik sendiri.
 - Melakukan reset untuk analisis baru.
-
-**Hak akses fase lanjutan:**
-
-- Login via Google.
+- Mengakses dashboard role.
 - Melihat riwayat analisis.
 - Menyimpan hasil analisis.
-- Mengunduh report PDF.
+- Mengekspor report melalui aksi simpan PDF/print browser.
 - Mengakses simulasi interview STAR.
 
 ### 4.2 Role: `hrd`
 
-Role untuk recruiter/perusahaan pada fase lanjutan.
+Role untuk recruiter/perusahaan.
 
 **Kebutuhan utama:**
 
@@ -143,15 +142,18 @@ Role administrator internal platform.
 
 ---
 
-## 5. Scope MVP
+## 5. Scope Produk
 
-### 5.1 In Scope
+### 5.1 Core Jobseeker Flow
 
 - Landing page CareerMatch.
+- Dashboard jobseeker sebagai pusat analisis CV.
 - Upload CV via click atau drag-and-drop.
 - Dukungan file PDF, DOC, dan DOCX.
 - Validasi minimal file wajib dipilih.
-- Pengiriman file ke webhook n8n menggunakan `multipart/form-data`.
+- Pengiriman file ke endpoint internal menggunakan `multipart/form-data`.
+- Penyimpanan file CV ke private Supabase Storage.
+- Penyimpanan analysis job dan result ke Supabase Postgres.
 - Loading state berbasis pipeline step.
 - Render hasil job matching.
 - Render score cards:
@@ -162,45 +164,41 @@ Role administrator internal platform.
 - Render matched skills dan skill gap.
 - Render career coaching berbasis Markdown.
 - Render raw/full report sebagai fallback.
-- Reset flow untuk analisis baru.
+- Reset flow untuk analisis baru dan hapus hasil dari riwayat user.
+- Riwayat analisis pada dashboard jobseeker.
+- Export report melalui aksi simpan PDF/print browser.
 
-### 5.2 Out of Scope MVP
+### 5.2 Role Dashboard Features
 
-- Login/register.
-- Persistensi riwayat analisis.
-- Dashboard jobseeker.
-- Dashboard HRD.
-- Dashboard superadmin.
-- Approval HRD.
-- STAR chatbot interaktif.
-- PDF export.
-- Payment/subscription.
-- Email notification.
-- Multi-language report.
-
-Fitur out of scope tetap masuk roadmap setelah MVP stabil.
+- Dashboard HRD untuk kelola lowongan, required skills, minimum experience, kandidat anonim, dan export laporan kandidat.
+- Dashboard superadmin untuk kelola user, approve/reject HRD, kelola lowongan, monitoring workflow, AI cost, latency, error rate, scoring weight, dan model AI.
+- STAR interview coach untuk simulasi jawaban, feedback per komponen STAR, dan resume sesi latihan.
+- Struktur auth dan role tetap menggunakan enum `jobseeker`, `hrd`, dan `superadmin`.
 
 ---
 
-## 6. User Journey MVP
+## 6. User Journey Produk
 
 ### 6.1 Happy Path
 
 1. Jobseeker membuka halaman utama.
 2. Jobseeker membaca value proposition.
-3. Jobseeker memilih atau drag-and-drop CV.
-4. Sistem menampilkan file yang dipilih.
-5. Jobseeker klik tombol analisis.
-6. Sistem menampilkan loading pipeline.
-7. Sistem mengirim file ke webhook.
-8. Workflow AI memproses file.
-9. Sistem menerima response.
-10. UI menampilkan hasil analisis.
-11. Jobseeker membuka tab:
+3. Jobseeker login via Google.
+4. Sistem mengecek role dan mengarahkan ke dashboard jobseeker.
+5. Jobseeker memilih atau drag-and-drop CV di dashboard.
+6. Sistem menampilkan file yang dipilih.
+7. Jobseeker klik tombol analisis.
+8. Sistem menampilkan loading pipeline.
+9. Sistem mengirim file ke endpoint internal.
+10. Server memvalidasi session/role, menyimpan file ke Supabase Storage, dan membuat analysis job.
+11. Workflow AI memproses file.
+12. Sistem menerima response, menormalisasi payload, dan menyimpan hasil ke Supabase Postgres.
+13. UI menampilkan hasil analisis.
+14. Jobseeker membuka tab:
     - Job Matches.
     - Career Coach.
     - Full Report.
-12. Jobseeker dapat memulai analisis baru.
+15. Jobseeker dapat membuka ulang hasil dari riwayat atau memulai analisis baru.
 
 ### 6.2 Empty File Path
 
@@ -211,11 +209,12 @@ Fitur out of scope tetap masuk roadmap setelah MVP stabil.
 ### 6.3 Backend Error Path
 
 1. Jobseeker sudah memilih file.
-2. Sistem mengirim file ke webhook.
+2. Sistem mengirim file ke endpoint internal.
 3. Webhook mengembalikan non-2xx response atau koneksi gagal.
-4. Sistem menyembunyikan loading.
-5. Tombol submit aktif kembali.
-6. Sistem menampilkan error: `Gagal terhubung ke server: {message}`.
+4. Analysis job ditandai `failed`.
+5. Sistem menyembunyikan loading.
+6. Tombol submit aktif kembali.
+7. Sistem menampilkan error: `Gagal terhubung ke server: {message}`.
 
 ### 6.4 Unstructured Response Path
 
@@ -249,14 +248,14 @@ Sistem harus mencegah submit jika belum ada file.
 - Tidak ada request network yang dikirim.
 - Tombol submit tetap aktif.
 
-### FR-003 — Submit ke Webhook
+### FR-003 — Submit ke Endpoint Internal
 
-Sistem harus mengirim file CV ke endpoint webhook menggunakan `POST multipart/form-data`.
+Sistem harus mengirim file CV ke endpoint internal menggunakan `POST multipart/form-data`. Endpoint internal memvalidasi session/role, menyimpan CV ke Supabase Storage, membuat `analysis_jobs`, meneruskan request ke webhook n8n dari server, lalu menyimpan hasil ke `analysis_results`.
 
 **Request Contract:**
 
 ```http
-POST {WEBHOOK_URL}
+POST /api/cv/analyze
 Content-Type: multipart/form-data
 ```
 
@@ -340,20 +339,16 @@ Sistem harus menyediakan tombol untuk memulai analisis baru.
 
 **Acceptance Criteria:**
 
-- File input dikosongkan.
-- File chosen indicator disembunyikan.
-- Submit button enabled.
-- Form card tampil kembali.
-- Results disembunyikan.
-- Error disembunyikan.
-- Score grid disembunyikan.
-- Scroll kembali ke atas.
+- Result aktif dihapus dari database untuk user tersebut.
+- User diarahkan kembali ke dashboard jobseeker.
+- Riwayat analisis di-refresh.
+- Upload form siap digunakan untuk analisis berikutnya.
 
 ---
 
 ## 8. Backend / Workflow Requirements
 
-MVP saat ini menggunakan n8n sebagai workflow orchestrator. Workflow harus menerima file CV, menjalankan proses AI, dan mengembalikan response JSON yang kompatibel dengan frontend.
+Aplikasi menggunakan n8n sebagai workflow orchestrator. Workflow menerima file CV, menjalankan proses AI, dan mengembalikan response JSON yang kompatibel dengan frontend.
 
 ### 8.1 Pipeline Backend
 
@@ -370,7 +365,7 @@ MVP saat ini menggunakan n8n sebagai workflow orchestrator. Workflow harus mener
 
 ### 8.2 Response Contract Utama
 
-Backend disarankan mengembalikan response seperti berikut:
+Backend mengembalikan response seperti berikut:
 
 ```json
 {
@@ -414,7 +409,7 @@ Backend disarankan mengembalikan response seperti berikut:
 
 ### 8.3 Backward-Compatible Response Keys
 
-Frontend MVP harus tetap menerima beberapa variasi key berikut agar kompatibel dengan output n8n yang belum stabil:
+Frontend menerima beberapa variasi key berikut agar kompatibel dengan output n8n yang belum stabil:
 
 | Data | Primary Key | Alternative Keys |
 |---|---|---|
@@ -456,95 +451,53 @@ skill_match_score = matched_required_skills / total_required_skills * 100
 
 ---
 
-## 10. Data Model MVP
+## 10. Data Model
 
-Untuk MVP berbasis n8n, data tidak wajib dipersisten di aplikasi. Namun agar mudah dikembangkan ke platform fullstack, struktur berikut direkomendasikan.
+Database produksi memakai Supabase Postgres. Schema terimplementasi pada `supabase/migrations/20260518180000_careermatch_production.sql` dan data awal pada `supabase/seed.sql`.
 
-### 10.1 `jobseekers`
+### 10.1 Better Auth Tables
 
-```sql
-CREATE TABLE jobseekers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE,
-  name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+Better Auth memakai tabel Postgres berikut agar Google OAuth, account linking, verification, dan session tersimpan persisten:
+
+- `users` — id Better Auth, email, `email_verified`, name, `avatar_url`, `role`, `status`, `company_id`.
+- `sessions` — token session, expiry, user agent, IP, `user_id`.
+- `accounts` — provider account Google, OAuth token terenkripsi oleh Better Auth, `user_id`.
+- `verifications` — token verifikasi dan OAuth state saat strategi database aktif.
+
+Role user wajib memakai enum string:
+
+```text
+jobseeker | hrd | superadmin
 ```
 
-### 10.2 `users`
+### 10.2 Core App Tables
 
-Jika sistem tetap menggunakan tabel `users`, role harus menggunakan `jobseeker`, bukan `user`.
+| Table | Fungsi |
+|---|---|
+| `companies` | Profil perusahaan HRD dan status approval |
+| `job_postings` | Lowongan, required skills, minimum experience, status embedding, dan vector `embedding(1536)` |
+| `analysis_jobs` | Status proses upload/analisis CV per jobseeker |
+| `analysis_results` | Hasil normalisasi analisis, job matches, skill gap, coaching, raw response |
+| `anonymous_candidate_matches` | Kandidat anonim yang terlihat oleh HRD |
+| `hrd_approval_requests` | Queue approval/reject registrasi HRD |
+| `workflow_metrics` | Monitoring n8n, AI cost, error rate, dan approval queue |
+| `scoring_configs` | Bobot scoring, default 70% skill dan 30% experience |
+| `model_configs` | Konfigurasi agent/model AI |
+| `audit_events` | Event admin, workflow, scoring, dan approval |
 
-```sql
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  avatar_url TEXT,
-  role TEXT NOT NULL DEFAULT 'jobseeker'
-    CHECK (role IN ('jobseeker', 'hrd', 'superadmin')),
-  status TEXT NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'pending', 'suspended')),
-  company_id UUID,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
+### 10.3 Storage Buckets
 
-### 10.3 `job_postings`
+| Bucket | Akses | Isi |
+|---|---|---|
+| `cv-uploads` | Private, service role only | File CV asli jobseeker |
+| `analysis-reports` | Private, service role only | Laporan hasil analisis |
 
-```sql
-CREATE TABLE job_postings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id UUID,
-  title TEXT NOT NULL,
-  company_name TEXT,
-  description TEXT,
-  required_skills TEXT[] NOT NULL,
-  min_experience_years INTEGER DEFAULT 0,
-  location TEXT,
-  job_type TEXT,
-  status TEXT NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'inactive', 'draft')),
-  embedding VECTOR(1536),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
+### 10.4 Security Model
 
-### 10.4 `analysis_jobs`
-
-```sql
-CREATE TABLE analysis_jobs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  jobseeker_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  cv_storage_path TEXT,
-  original_filename TEXT,
-  status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'processing', 'done', 'failed')),
-  error_message TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 10.5 `analysis_results`
-
-```sql
-CREATE TABLE analysis_results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  analysis_job_id UUID REFERENCES analysis_jobs(id) ON DELETE CASCADE,
-  jobseeker_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  candidate_profile JSONB,
-  job_matches JSONB NOT NULL,
-  career_coaching TEXT,
-  interview_questions JSONB,
-  raw_response JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
+- RLS aktif untuk seluruh tabel aplikasi.
+- Client browser tidak memanggil Supabase service role.
+- Server route menggunakan `SUPABASE_SERVICE_ROLE_KEY` hanya di server.
+- File CV asli tidak pernah diberikan ke HRD.
 
 ---
 
@@ -553,7 +506,7 @@ CREATE TABLE analysis_results (
 ### 11.1 CV Privacy
 
 - CV berisi data sensitif dan tidak boleh disimpan publik.
-- Untuk MVP n8n, file hanya boleh diproses untuk kebutuhan analisis.
+- Untuk alur n8n, file hanya boleh diproses untuk kebutuhan analisis.
 - Jika file disimpan, gunakan private storage dan TTL.
 - HRD tidak boleh melihat CV asli jobseeker.
 
@@ -582,11 +535,11 @@ Placeholder yang direkomendasikan:
 - Jangan render raw HTML dari backend tanpa sanitization.
 - Markdown harus dibatasi pada elemen aman.
 - Jangan expose API key di frontend.
-- Webhook URL public sebaiknya diganti dengan backend proxy pada production.
+- Webhook URL public diganti dengan backend proxy pada production.
 
 ### 11.4 Production Recommendation
 
-Untuk production, frontend tidak sebaiknya langsung memanggil webhook n8n public. Gunakan server endpoint internal:
+Untuk production, frontend memanggil server endpoint internal:
 
 ```text
 POST /api/cv/analyze
@@ -594,7 +547,7 @@ POST /api/cv/analyze
 
 Endpoint tersebut bertugas:
 
-- Validasi auth jika sudah ada login.
+- Validasi role/session request.
 - Validasi file type dan size.
 - Rate limiting.
 - Forward request ke n8n.
@@ -607,7 +560,7 @@ Endpoint tersebut bertugas:
 
 | Kategori | Requirement |
 |---|---|
-| Performance | MVP response ideal < 60 detik untuk CV normal |
+| Performance | Response ideal < 60 detik untuk CV normal |
 | UX | Loading state wajib tampil selama analisis |
 | Reliability | Error backend harus ditampilkan jelas ke jobseeker |
 | Compatibility | Responsive untuk desktop dan mobile |
@@ -633,77 +586,85 @@ Event yang direkomendasikan:
 
 ---
 
-## 14. Acceptance Criteria MVP End-to-End
+## 14. Acceptance Criteria End-to-End
 
-MVP dianggap selesai jika:
+Produk dianggap selesai jika:
 
+- Navbar hanya berisi logo, menu `home/about/features/contact`, dan tombol login.
+- Login Google berjalan lewat Better Auth.
+- Setelah login, user diarahkan ke dashboard sesuai role.
 - Jobseeker dapat mengunggah file CV dari browser.
 - File yang dipilih tampil di UI.
 - Submit tanpa file menampilkan error.
-- Submit dengan file mengirim request ke webhook.
+- Submit dengan file mengirim request ke endpoint internal.
+- Endpoint internal menyimpan CV ke Supabase Storage.
+- Endpoint internal menyimpan analysis job/result ke Supabase Postgres.
 - Loading pipeline tampil saat request berjalan.
 - Response sukses menampilkan halaman hasil.
 - Jika response punya `job_matches`, UI menampilkan score dan job cards.
 - Jika response punya `career_coaching`, UI menampilkan konten Markdown.
 - Jika response tidak terstruktur, UI tetap menampilkan Full Report.
 - Error network/backend ditampilkan ke jobseeker.
-- Tombol reset mengembalikan aplikasi ke state awal.
+- Tombol reset menghapus result user dan kembali ke dashboard.
+- HRD dapat menambah lowongan, refresh embedding, melihat kandidat anonim, dan export laporan.
+- Superadmin dapat approve/reject HRD, melihat user/job/monitoring/scoring/model/audit.
 
 ---
 
-## 15. Roadmap
+## 15. Implementation Status
 
-### Phase 1 — Stabilize MVP
+### 15.1 Core Matching Experience
 
-- Standarisasi response contract dari n8n.
-- Tambahkan validasi file extension dan size di frontend.
-- Tambahkan backend proxy untuk menyembunyikan webhook URL.
-- Tambahkan telemetry event dasar.
-- Tambahkan sanitization Markdown.
+- Response contract dari n8n distandarkan melalui normalizer frontend.
+- Validasi file extension dan size tersedia di frontend dan server endpoint.
+- Backend proxy `/api/cv/analyze` menyembunyikan webhook URL dari browser.
+- Telemetry event dasar tersedia.
+- Markdown dan raw report dirender secara aman.
 
-### Phase 2 — Persistence & Auth
+### 15.2 Jobseeker Dashboard
 
-- Implementasi login Google.
 - Role default: `jobseeker`.
-- Simpan analysis job dan result.
-- Dashboard jobseeker untuk melihat riwayat analisis.
-- Download report PDF.
+- Upload CV dilakukan dari dashboard jobseeker.
+- CV tersimpan private di Supabase Storage.
+- Analysis job dan result tersimpan di Supabase Postgres.
+- Riwayat analisis tampil di dashboard jobseeker.
+- Report dapat diekspor melalui aksi simpan PDF/print browser.
 
-### Phase 3 — HRD Portal
+### 15.3 HRD Dashboard
 
-- Role `hrd` dengan approval `superadmin`.
-- CRUD job postings.
-- Embedding otomatis saat lowongan dibuat/diubah.
-- Kandidat anonim berdasarkan job match.
+- Role `hrd` tersedia dalam role matrix.
+- Lowongan dapat ditambahkan ke Supabase dari dashboard HRD.
+- Required skills dan minimum years tampil per lowongan.
+- Embedding status dapat di-refresh.
+- Kandidat anonim tampil dari database berdasarkan job match dan dapat diekspor.
 
-### Phase 4 — Interview Coach
+### 15.4 Interview Coach
 
-- Generate STAR interview questions.
-- Chatbot simulasi interview.
-- Feedback per komponen STAR.
-- Resume session.
+- STAR interview questions tampil sebagai prompt latihan.
+- Simulasi interview menerima jawaban kandidat.
+- Feedback diberikan per kelengkapan komponen STAR.
+- Transcript sesi tersimpan di layar selama latihan.
 
-### Phase 5 — Admin & Monitoring
+### 15.5 Admin & Monitoring
 
-- Dashboard superadmin.
-- Monitoring n8n workflow.
-- AI cost tracking.
-- Error rate tracking.
-- Konfigurasi scoring weight.
-- Audit log.
+- Dashboard superadmin tersedia.
+- Superadmin dapat approve/reject registrasi HRD dan update database.
+- Workflow health, AI cost, error rate, dan HRD approval queue tampil dari database.
+- Scoring weight mengikuti 70% skill match dan 30% experience match.
+- Model AI dan audit log tampil pada console superadmin.
 
 ---
 
-## 16. Open Questions
+## 16. Product Decisions
 
-1. Apakah nama produk final tetap **CareerMatch**, **AI Career Match**, atau **CV Match Pro**?
-2. Apakah MVP wajib tetap menggunakan n8n, atau akan segera dipindah ke backend TanStack Start?
-3. Apakah file DOC perlu didukung penuh, atau hanya DOCX dan PDF?
-4. Apakah job database berasal dari Supabase internal, scraped job data, atau input manual HRD?
-5. Apakah output career coaching harus bahasa Indonesia, Inggris, atau mengikuti bahasa CV?
-6. Apakah score harus ditampilkan sebagai integer atau decimal?
-7. Berapa batas ukuran CV final: 5MB atau 10MB?
-8. Apakah CV boleh disimpan, atau hanya diproses transient tanpa persistence?
+1. Nama produk final: **CareerMatch**.
+2. Endpoint analisis CV: browser memanggil `/api/cv/analyze`, server menyimpan CV/result ke Supabase dan meneruskan file ke n8n.
+3. Format file CV: PDF, DOC, dan DOCX.
+4. Job database: Supabase Postgres + pgvector, dengan input HRD sebagai sumber lowongan.
+5. Bahasa career coaching: mengikuti response backend, UI utama bahasa Indonesia.
+6. Tampilan score: integer percent agar mudah dipindai.
+7. Batas ukuran CV: 10MB.
+8. Privasi CV: CV asli tersimpan private untuk analisis dan tidak ditampilkan ke HRD.
 
 ---
 
@@ -724,42 +685,44 @@ MVP dianggap selesai jika:
 
 | Teknologi | Versi | Fungsi | Justifikasi |
 |---|---|---|---|
-| **Better Auth** | Latest | Session manager utama di lapisan aplikasi | Framework-agnostic, mendukung custom Supabase adapter, fleksibel untuk menambah provider OAuth baru |
-| **Better Auth Google Plugin** | Latest | Integrasi Google OAuth 2.0 | Abstraksi OAuth flow yang clean, type-safe, dan mudah dikonfigurasi |
-| **Supabase Auth** | Latest | OAuth provider (Google) | Menangani integrasi dengan Google, redirect, dan token management di sisi provider |
+| **Better Auth** | 1.6.x | Session manager dan OAuth handler | Terintegrasi dengan TanStack Start |
+| **Better Auth Google Provider** | 1.6.x | Login Google | Mendukung `signIn.social({ provider: "google" })` |
+| **TanStack Start Cookies Plugin** | 1.6.x | Sinkronisasi cookie auth di TanStack Start | Cookie OAuth/session diset lewat handler framework |
+| **Postgres session tables** | Better Auth + Supabase | Session dan account OAuth persisten | Cocok untuk production multi-role dengan audit dan role redirect |
 
-Strategi autentikasi menggunakan pendekatan hybrid: **Supabase Auth** sebagai OAuth provider, **Better Auth** sebagai session manager di lapisan aplikasi (HTTP-only cookie, token rotation, RBAC middleware).
+**Alur login dan role redirect:**
 
-**Alur login Google OAuth:**
+1. User klik tombol **Login** pada navbar.
+2. Frontend memanggil `authClient.signIn.social({ provider: "google" })`.
+3. Better Auth menjalankan OAuth Google melalui `/api/auth/*`.
+4. Callback Google kembali ke aplikasi.
+5. Aplikasi membaca session Better Auth dan mengambil `user.role`.
+6. Jika role `jobseeker`, redirect ke `/jobseeker/dashboard`.
+7. Jika role `hrd`, redirect ke `/hrd/portal`.
+8. Jika role `superadmin`, redirect ke `/superadmin/monitoring`.
 
-1. User klik "Masuk dengan Google" → Better Auth initiate OAuth flow.
-2. Google OAuth Consent Screen ditampilkan.
-3. Callback ke `/api/auth/callback/google`.
-4. Better Auth tukar code dengan access token, fetch profil Google.
-5. Cek email di tabel `users`: jika baru dibuat, role default `jobseeker`.
-6. Session disimpan ke tabel `sessions` di Supabase, HTTP-only cookie di-set.
-7. Redirect ke dashboard sesuai role.
+**Environment auth:**
 
-**Keamanan session:**
-
-| Mekanisme | Detail |
+| Variable | Fungsi |
 |---|---|
-| Cookie type | HTTP-only, Secure, SameSite=Strict |
-| Session duration | 7 hari, auto-refresh jika < 1 hari tersisa |
-| Token rotation | Aktif setiap request yang memperbarui session |
-| Rate limiting login | Maks. 10 percobaan per IP per 15 menit |
-| Force logout | Superadmin dapat invalidate semua session user dari panel admin |
+| `BETTER_AUTH_URL` | Base URL aplikasi, contoh `http://localhost:3000` |
+| `BETTER_AUTH_SECRET` | Secret minimal 32 karakter untuk cookie/session |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
+| `DATABASE_URL` | Connection string Postgres untuk Better Auth |
+| `SUPABASE_URL` | URL project Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key untuk database dan storage |
+| `SUPABASE_ANON_KEY` | Public anon key jika dibutuhkan client Supabase |
 
 ### 17.3 Backend & AI
 
 | Teknologi | Versi | Fungsi | Justifikasi |
 |---|---|---|---|
 | **TanStack Start Server Functions** | Latest | API layer internal | Type-safe end-to-end, tightly integrated dengan router |
-| **n8n** | Latest | Workflow orchestrator pipeline AI (MVP) | Low-code, visual pipeline untuk Agent 1/2/3 dan integrasi AI |
-| **OpenAI SDK** | Latest | Agent 1 (CV Analyzer), Agent 2 (Career Advisor), Agent 3 (Interview Prep) menggunakan GPT-4o | Kualitas tertinggi untuk analisis bahasa, anonymisasi, dan coaching naratif |
-| **pdf-parse** | Latest | Ekstraksi teks dari file PDF | Ringan, tanpa external dependencies |
-| **mammoth** | Latest | Ekstraksi teks dari file DOCX | Output teks/HTML bersih dari format Word |
-| **@react-pdf/renderer** | Latest | Generate laporan hasil analisis ke format PDF | React-native approach, customizable layout |
+| **n8n** | Latest | Workflow orchestrator pipeline AI | Low-code, visual pipeline untuk Agent 1/2/3 dan integrasi AI |
+| **OpenAI GPT-4o** | Latest | Agent 1 (CV Analyzer), Agent 2 (Career Advisor), Agent 3 (Interview Prep) | Kualitas tinggi untuk analisis bahasa, anonymisasi, dan coaching naratif |
+| **n8n extraction nodes** | Latest | Ekstraksi teks PDF/DOC/DOCX | Ekstraksi berjalan di workflow backend |
+| **Browser print dialog** | Web API | Simpan report sebagai PDF | Tidak menambah dependency generator PDF di frontend |
 
 ### 17.4 Database & Storage
 
@@ -783,22 +746,21 @@ Path file `analysis-reports`: `{jobseeker_id}/{analysis_job_id}_report.pdf`
 
 | Teknologi | Fungsi |
 |---|---|
-| **Vitest** | Unit testing dan integration testing |
-| **Playwright** | End-to-end testing seluruh flow per role |
-| **Sentry** | Error monitoring dan performance tracking di production |
-| **Vercel** | Production deployment (edge-ready, compatible dengan TanStack Start) |
-| **GitHub Actions** | CI/CD pipeline: lint, test, build, deploy otomatis |
+| **TypeScript** | Typecheck end-to-end |
+| **Biome** | Lint dan format |
+| **Vite build** | Verifikasi production bundle |
+| **Nitro Cloudflare preset** | Build target server |
 
 ### 17.6 Ringkasan Keputusan Tech Stack
 
 | Kategori | Pilihan | Alasan Utama |
 |---|---|---|
 | Fullstack framework | TanStack Start | Type-safe, unified server+client, ekosistem TanStack yang konsisten |
-| Session management | Better Auth | Fleksibel, Supabase adapter, mudah tambah OAuth provider baru |
-| OAuth provider | Google via Supabase Auth + Better Auth | Login mudah tanpa password, familiar untuk end user |
+| Session management | Better Auth | OAuth Google dan session cookie |
+| OAuth provider | Google via Better Auth | Login familiar dan callback standar `/api/auth/callback/google` |
 | Database | Supabase PostgreSQL | Managed, pgvector built-in, RLS untuk keamanan multi-role |
-| Object storage | Supabase Storage | Terintegrasi RLS, tidak perlu vendor storage terpisah |
-| AI orchestration (MVP) | n8n | Iterasi cepat tanpa kode tambahan; migrasi ke server functions di fase lanjutan |
+| Object storage | Supabase Storage | Terintegrasi RLS untuk private CV/report saat backend workflow menyimpan file |
+| AI orchestration | n8n + TanStack server route | Iterasi cepat melalui workflow AI dengan proxy internal aplikasi |
 | AI model | GPT-4o (OpenAI) | Kualitas terbaik untuk analisis CV kompleks dan coaching naratif |
 | Styling | Tailwind CSS v4 | Performa, konsistensi, dan ekosistem komponen yang luas |
 
@@ -806,8 +768,9 @@ Path file `analysis-reports`: `{jobseeker_id}/{analysis_job_id}_report.pdf`
 
 ## 18. Engineering Notes
 
-- Prototype saat ini mengizinkan `.pdf`, `.doc`, `.docx`, dan teks UI menyebut maksimum 10MB. PRD lama menyebut PDF/DOCX maksimum 5MB. Perlu keputusan final agar frontend dan backend konsisten.
-- Prototype saat ini langsung memanggil webhook n8n dari browser. Ini cepat untuk MVP, tetapi kurang ideal untuk production karena URL webhook terekspos.
-- Frontend sudah cukup defensif terhadap format response berbeda. Namun untuk maintainability, backend tetap harus distandarkan.
-- Semua referensi role `user` dari PRD lama harus diganti menjadi `jobseeker`, termasuk enum database, route guard, policy, dokumentasi, dan UI copy.
-- Fitur HRD, superadmin, auth, STAR chatbot, dan PDF report sebaiknya tidak dimasukkan ke definisi MVP kecuali memang sudah akan dibangun pada sprint yang sama.
+- Aplikasi mengizinkan `.pdf`, `.doc`, `.docx`, dan batas maksimum 10MB.
+- Browser memanggil endpoint internal `/api/cv/analyze`; URL webhook n8n tetap di server.
+- Endpoint analisis memvalidasi session Better Auth, menyimpan file ke Supabase Storage, dan menyimpan result ke Supabase Postgres.
+- Frontend tetap defensif terhadap format response berbeda. Backend tetap mengembalikan contract terstruktur.
+- Semua referensi role memakai `jobseeker`, `hrd`, dan `superadmin`, termasuk enum database, route guard, policy, dokumentasi, dan UI copy.
+- Fitur HRD, superadmin, auth, STAR coach, dan report export masuk definisi produk dan tampil sebagai dashboard role.
