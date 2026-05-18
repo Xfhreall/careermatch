@@ -5,19 +5,31 @@ import { Pool } from "pg";
 const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 const databaseUrl = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
 
-function createDatabasePool() {
+let pool: Pool | undefined;
+
+function getDatabasePool(): Pool | undefined {
   if (!databaseUrl || databaseUrl.trim().length === 0) {
     return undefined;
   }
 
-  return new Pool({
-    allowExitOnIdle: true,
-    connectionString: databaseUrl,
-    ssl:
-      process.env.DATABASE_SSL === "true" || databaseUrl.includes("supabase.co")
-        ? { rejectUnauthorized: false }
-        : undefined,
-  });
+  if (!pool) {
+    pool = new Pool({
+      connectionString: databaseUrl,
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      ssl:
+        process.env.DATABASE_SSL === "true" || databaseUrl.includes("supabase.co")
+          ? { rejectUnauthorized: false }
+          : undefined,
+    });
+
+    pool.on("error", (err) => {
+      console.error("[DB Pool] Unexpected error:", err.message);
+    });
+  }
+
+  return pool;
 }
 
 function createAuthInstance(database?: Pool) {
@@ -125,12 +137,8 @@ type AuthInstance = ReturnType<typeof createAuthInstance>;
 export async function withAuth<T>(
   callback: (auth: AuthInstance) => Promise<T>
 ): Promise<T> {
-  const database = createDatabasePool();
+  const database = getDatabasePool();
   const auth = createAuthInstance(database);
 
-  try {
-    return await callback(auth);
-  } finally {
-    await database?.end().catch(() => undefined);
-  }
+  return callback(auth);
 }
