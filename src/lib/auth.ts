@@ -3,25 +3,43 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { Pool } from "pg";
 
 const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
-const databaseUrl = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
+
+function getDatabaseUrl(): string | undefined {
+  // Cloudflare Hyperdrive binding — priority 1
+  const hyperdrive = (globalThis as any).__env__?.HYPERDRIVE as
+    | { connectionString?: string }
+    | undefined;
+  if (hyperdrive?.connectionString) {
+    return hyperdrive.connectionString;
+  }
+
+  // Direct env var — priority 2
+  return process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
+}
 
 let pool: Pool | undefined;
 
 function getDatabasePool(): Pool | undefined {
+  const databaseUrl = getDatabaseUrl();
+
   if (!databaseUrl || databaseUrl.trim().length === 0) {
     return undefined;
   }
 
   if (!pool) {
+    const isHyperdrive = Boolean(
+      (globalThis as any).__env__?.HYPERDRIVE,
+    );
+
     pool = new Pool({
       connectionString: databaseUrl,
-      max: 5,
+      max: isHyperdrive ? 10 : 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-      ssl:
-        process.env.DATABASE_SSL === "true" || databaseUrl.includes("supabase.co")
-          ? { rejectUnauthorized: false }
-          : undefined,
+      connectionTimeoutMillis: 15000,
+      // Hyperdrive handles SSL internally; only set SSL for direct connections
+      ssl: isHyperdrive
+        ? undefined
+        : { rejectUnauthorized: false },
     });
 
     pool.on("error", (err) => {

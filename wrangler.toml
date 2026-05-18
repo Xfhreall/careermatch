@@ -13,6 +13,10 @@ directory = ".output/public"
 type = "ESModule"
 globs = ["**/*.mjs", "**/*.js"]
 
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "84327efcc1894753b541d5d79eba2953"
+
 [observability]
 enabled = false
 head_sampling_rate = 1
