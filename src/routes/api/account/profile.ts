@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { getUserRole } from "@/features/auth/role-routing"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/auth"
 import {
   removeAvatarFromStorageByPublicUrl,
   uploadAvatarToStorage,
@@ -114,11 +114,13 @@ export const Route = createFileRoute("/api/account/profile")({
             })
           }
 
-          const updateResponse = await auth.api.updateUser({
-            asResponse: true,
-            body: updatePayload,
-            headers: request.headers,
-          })
+          const updateResponse = await withAuth((auth) =>
+            auth.api.updateUser({
+              asResponse: true,
+              body: updatePayload,
+              headers: request.headers,
+            })
+          )
 
           if (!updateResponse.ok) {
             return updateResponse

@@ -2,7 +2,7 @@ import {
   getDashboardPathForRole,
   getUserRole,
 } from "@/features/auth/role-routing"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/auth"
 
 type SessionUser = {
   companyId?: string | null
@@ -19,9 +19,11 @@ export type RequestSession = {
 }
 
 export async function getRequestSession(request: Request) {
-  return (await auth.api.getSession({
-    headers: request.headers,
-  })) as RequestSession | null
+  return (await withAuth((auth) =>
+    auth.api.getSession({
+      headers: request.headers,
+    })
+  )) as RequestSession | null
 }
 
 export async function requireAuthenticatedUser(request: Request) {

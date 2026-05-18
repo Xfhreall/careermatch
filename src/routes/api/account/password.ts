@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/auth"
 import { requireAuthenticatedUser } from "@/lib/server/auth-session"
 import { jsonError } from "@/lib/server/http"
 
@@ -49,15 +49,17 @@ export const Route = createFileRoute("/api/account/password")({
             )
           }
 
-          const changeResponse = await auth.api.changePassword({
-            asResponse: true,
-            body: {
-              currentPassword,
-              newPassword,
-              revokeOtherSessions: false,
-            },
-            headers: request.headers,
-          })
+          const changeResponse = await withAuth((auth) =>
+            auth.api.changePassword({
+              asResponse: true,
+              body: {
+                currentPassword,
+                newPassword,
+                revokeOtherSessions: false,
+              },
+              headers: request.headers,
+            })
+          )
 
           if (!changeResponse.ok) {
             const errorPayload = await readPayload(changeResponse)

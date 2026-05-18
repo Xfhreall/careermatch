@@ -10,7 +10,7 @@ import {
   getDashboardPathForRole,
   getUserRole,
 } from "@/features/auth/role-routing";
-import { auth } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 
 const ROUTE_ROLE_RULES: Array<{ allowedRoles: AppRole[]; prefix: string }> = [
   { prefix: "/jobseeker", allowedRoles: ["jobseeker"] },
@@ -35,9 +35,11 @@ const roleAccessMiddleware = createMiddleware().server(
       return next();
     }
 
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const session = await withAuth((auth) =>
+      auth.api.getSession({
+        headers: request.headers,
+      }),
+    );
 
     if (!session?.user) {
       throw redirect({
