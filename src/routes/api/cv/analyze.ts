@@ -2,11 +2,25 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { normalizeAnalysisResponse } from "@/features/cv-analysis/normalize"
 import { validateCvFile } from "@/features/cv-analysis/validators"
+import { requireRole } from "@/lib/server/auth-session"
+import {
+  createAnalysisJob,
+  markAnalysisJobStatus,
+  saveAnalysisResult,
+  uploadCvToStorage,
+} from "@/lib/server/careermatch-repository"
+import { jsonError } from "@/lib/server/http"
 
 export const Route = createFileRoute("/api/cv/analyze")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const auth = await requireRole(request, ["jobseeker", "superadmin"])
+
+        if (auth.response) {
+          return auth.response
+        }
+
         const webhookUrl = process.env.N8N_WEBHOOK_URL
 
         if (!webhookUrl) {
@@ -33,6 +47,22 @@ export const Route = createFileRoute("/api/cv/analyze")({
           return Response.json({ error: validation.message }, { status: 400 })
         }
 
+        let analysisJobId: string | undefined
+
+        try {
+          const storagePath = await uploadCvToStorage(
+            auth.session.user.id,
+            cvValue
+          )
+          analysisJobId = await createAnalysisJob({
+            file: cvValue,
+            storagePath,
+            userId: auth.session.user.id,
+          })
+        } catch (error) {
+          return jsonError(error, "Gagal menyimpan CV ke Supabase.")
+        }
+
         const outgoingForm = new FormData()
         outgoingForm.append("cv", cvValue, cvValue.name)
         outgoingForm.append(
@@ -48,6 +78,8 @@ export const Route = createFileRoute("/api/cv/analyze")({
             body: outgoingForm,
           })
         } catch (error) {
+          await markAnalysisFailed(analysisJobId, error)
+
           return Response.json(
             {
               error:
@@ -62,6 +94,11 @@ export const Route = createFileRoute("/api/cv/analyze")({
         const payload = await readWebhookPayload(webhookResponse)
 
         if (!webhookResponse.ok) {
+          await markAnalysisFailed(
+            analysisJobId,
+            `Webhook n8n merespons status ${webhookResponse.status}.`
+          )
+
           return Response.json(
             {
               error:
@@ -74,7 +111,22 @@ export const Route = createFileRoute("/api/cv/analyze")({
           )
         }
 
-        return Response.json(normalizeAnalysisResponse(payload))
+        const result = normalizeAnalysisResponse(payload)
+
+        try {
+          await saveAnalysisResult({
+            jobId: analysisJobId,
+            rawResponse: payload,
+            result,
+            userId: auth.session.user.id,
+          })
+          await markAnalysisJobStatus(analysisJobId, "completed")
+        } catch (error) {
+          await markAnalysisFailed(analysisJobId, error)
+          return jsonError(error, "Gagal menyimpan hasil analisis.")
+        }
+
+        return Response.json(result)
       },
     },
   },
@@ -88,4 +140,12 @@ async function readWebhookPayload(response: Response): Promise<unknown> {
   }
 
   return response.text()
+}
+
+async function markAnalysisFailed(jobId: string, error: unknown) {
+  await markAnalysisJobStatus(
+    jobId,
+    "failed",
+    error instanceof Error ? error.message : String(error)
+  )
 }

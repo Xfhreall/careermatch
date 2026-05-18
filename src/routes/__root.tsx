@@ -1,8 +1,11 @@
 import { TanStackDevtools } from "@tanstack/react-devtools"
+import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools"
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
+import { SessionUserCacheSync } from "@/features/auth/SessionUserCacheSync"
 import { LenisProvider } from "@/shared/components/LenisProvider"
+import { Toaster } from "@/shared/components/shadcn/ui/sonner"
 
 import appCss from "../styles.css?url"
 
@@ -47,14 +50,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
-        <LenisProvider>{children}</LenisProvider>
+      <body suppressHydrationWarning>
+        <LenisProvider>
+          {children}
+          <SessionUserCacheSync />
+        </LenisProvider>
+        <Toaster richColors />
         {import.meta.env.DEV ? (
           <TanStackDevtools
             config={{
               position: "bottom-right",
             }}
             plugins={[
+              {
+                name: "TanStack Query",
+                render: <ReactQueryDevtoolsPanel />,
+              },
               {
                 name: "Tanstack Router",
                 render: <TanStackRouterDevtoolsPanel />,
