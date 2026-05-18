@@ -61,7 +61,7 @@ function createAuthInstance(database?: Pool) {
       },
       encryptOAuthTokens: hasDatabase,
       storeAccountCookie: !hasDatabase,
-      storeStateStrategy: hasDatabase ? "database" : "cookie",
+      storeStateStrategy: "cookie",
       fields: {
         accessToken: "access_token",
         accessTokenExpiresAt: "access_token_expires_at",
@@ -155,8 +155,12 @@ type AuthInstance = ReturnType<typeof createAuthInstance>;
 export async function withAuth<T>(
   callback: (auth: AuthInstance) => Promise<T>
 ): Promise<T> {
+  console.log("[withAuth] start, pool exists:", Boolean(pool))
   const database = getDatabasePool();
+  console.log("[withAuth] pool acquired:", Boolean(database))
   const auth = createAuthInstance(database);
-
-  return callback(auth);
+  console.log("[withAuth] auth instance created")
+  const result = callback(auth);
+  console.log("[withAuth] callback returned, isPromise:", result instanceof Promise)
+  return result;
 }
