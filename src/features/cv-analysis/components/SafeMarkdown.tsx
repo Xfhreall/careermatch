@@ -1,33 +1,9 @@
 import * as React from "react"
 
-type ListBlock = {
-  type: "list"
-  ordered: boolean
-  items: string[]
-}
-
-type ParagraphBlock = {
-  type: "paragraph"
-  lines: string[]
-}
-
-type HeadingBlock = {
-  type: "heading"
-  level: 2 | 3
-  text: string
-}
-
-type CodeBlock = {
-  type: "code"
-  content: string
-}
-
-type MarkdownBlock = ListBlock | ParagraphBlock | HeadingBlock | CodeBlock
-
 export function SafeMarkdown({ value }: { value: string }) {
-  const blocks = React.useMemo(() => parseMarkdownBlocks(value), [value])
+  const html = React.useMemo(() => markdownToSafeHtml(value), [value])
 
-  if (blocks.length === 0) {
+  if (!html) {
     return (
       <p className="text-muted-foreground text-sm">
         Belum ada konten yang tersedia.
@@ -36,63 +12,17 @@ export function SafeMarkdown({ value }: { value: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 text-sm leading-7">
-      {blocks.map((block, index) => renderBlock(block, index))}
-    </div>
+    <div
+      className="analysis-markdown"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is escaped before HTML is generated.
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }
 
-function renderBlock(block: MarkdownBlock, index: number) {
-  switch (block.type) {
-    case "heading":
-      return block.level === 2 ? (
-        <h2 className="font-medium text-xl" key={index}>
-          {block.text}
-        </h2>
-      ) : (
-        <h3 className="font-medium text-base" key={index}>
-          {block.text}
-        </h3>
-      )
-    case "list": {
-      const Component = block.ordered ? "ol" : "ul"
-
-      return (
-        <Component
-          className={
-            block.ordered
-              ? "flex list-decimal flex-col gap-2 pl-5"
-              : "flex list-disc flex-col gap-2 pl-5"
-          }
-          key={index}
-        >
-          {block.items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </Component>
-      )
-    }
-    case "code":
-      return (
-        <pre
-          className="overflow-x-auto rounded-lg border border-border bg-background p-4 text-xs leading-6"
-          key={index}
-        >
-          <code>{block.content}</code>
-        </pre>
-      )
-    case "paragraph":
-      return (
-        <p className="text-muted-foreground" key={index}>
-          {block.lines.join(" ")}
-        </p>
-      )
-  }
-}
-
-function parseMarkdownBlocks(value: string): MarkdownBlock[] {
-  const blocks: MarkdownBlock[] = []
+function markdownToSafeHtml(value: string) {
   const lines = value.replace(/\r\n/g, "\n").split("\n")
+  const html: string[] = []
   let index = 0
 
   while (index < lines.length) {
@@ -112,44 +42,78 @@ function parseMarkdownBlocks(value: string): MarkdownBlock[] {
         index += 1
       }
 
-      blocks.push({ type: "code", content: codeLines.join("\n") })
+      html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`)
       index += 1
       continue
     }
 
-    if (line.startsWith("### ")) {
-      blocks.push({ type: "heading", level: 3, text: line.slice(4).trim() })
+    const table = readTable(lines, index)
+
+    if (table) {
+      html.push(renderTable(table.headers, table.rows))
+      index = table.nextIndex
+      continue
+    }
+
+    const headingMatch = /^(#{1,4})\s+(.+)$/.exec(line.trim())
+
+    if (headingMatch) {
+      const level = Math.min(headingMatch[1]?.length ?? 2, 4)
+      const tag = level === 1 ? "h2" : (`h${level}` as "h2" | "h3" | "h4")
+
+      html.push(`<${tag}>${renderInline(headingMatch[2] ?? "")}</${tag}>`)
       index += 1
       continue
     }
 
-    if (line.startsWith("## ")) {
-      blocks.push({ type: "heading", level: 2, text: line.slice(3).trim() })
-      index += 1
-      continue
-    }
-
-    if (/^[-*]\s+/.test(line)) {
+    if (/^[-*]\s+/.test(line.trim())) {
       const items: string[] = []
 
-      while (index < lines.length && /^[-*]\s+/.test(lines[index] ?? "")) {
-        items.push((lines[index] ?? "").replace(/^[-*]\s+/, "").trim())
+      while (
+        index < lines.length &&
+        /^[-*]\s+/.test(lines[index]?.trim() ?? "")
+      ) {
+        items.push((lines[index] ?? "").trim().replace(/^[-*]\s+/, ""))
         index += 1
       }
 
-      blocks.push({ type: "list", ordered: false, items })
+      html.push(
+        `<ul>${items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ul>`
+      )
       continue
     }
 
-    if (/^\d+\.\s+/.test(line)) {
+    if (/^\d+\.\s+/.test(line.trim())) {
       const items: string[] = []
 
-      while (index < lines.length && /^\d+\.\s+/.test(lines[index] ?? "")) {
-        items.push((lines[index] ?? "").replace(/^\d+\.\s+/, "").trim())
+      while (
+        index < lines.length &&
+        /^\d+\.\s+/.test(lines[index]?.trim() ?? "")
+      ) {
+        items.push((lines[index] ?? "").trim().replace(/^\d+\.\s+/, ""))
         index += 1
       }
 
-      blocks.push({ type: "list", ordered: true, items })
+      html.push(
+        `<ol>${items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ol>`
+      )
+      continue
+    }
+
+    if (line.trim().startsWith(">")) {
+      const quoteLines: string[] = []
+
+      while (
+        index < lines.length &&
+        (lines[index]?.trim() ?? "").startsWith(">")
+      ) {
+        quoteLines.push((lines[index] ?? "").trim().replace(/^>\s?/, ""))
+        index += 1
+      }
+
+      html.push(
+        `<blockquote>${renderInline(quoteLines.join(" "))}</blockquote>`
+      )
       continue
     }
 
@@ -160,11 +124,12 @@ function parseMarkdownBlocks(value: string): MarkdownBlock[] {
 
       if (
         !nextLine.trim() ||
-        nextLine.startsWith("## ") ||
-        nextLine.startsWith("### ") ||
         nextLine.startsWith("```") ||
-        /^[-*]\s+/.test(nextLine) ||
-        /^\d+\.\s+/.test(nextLine)
+        /^(#{1,4})\s+/.test(nextLine.trim()) ||
+        /^[-*]\s+/.test(nextLine.trim()) ||
+        /^\d+\.\s+/.test(nextLine.trim()) ||
+        nextLine.trim().startsWith(">") ||
+        readTable(lines, index)
       ) {
         break
       }
@@ -173,8 +138,75 @@ function parseMarkdownBlocks(value: string): MarkdownBlock[] {
       index += 1
     }
 
-    blocks.push({ type: "paragraph", lines: paragraphLines })
+    html.push(`<p>${renderInline(paragraphLines.join(" "))}</p>`)
   }
 
-  return blocks
+  return html.join("").trim()
+}
+
+function readTable(lines: string[], startIndex: number) {
+  const headerLine = lines[startIndex]?.trim() ?? ""
+  const separatorLine = lines[startIndex + 1]?.trim() ?? ""
+
+  if (
+    !headerLine.includes("|") ||
+    !/^\|?[\s:-]+\|[\s|:-]+$/.test(separatorLine)
+  ) {
+    return null
+  }
+
+  const headers = splitTableRow(headerLine)
+  const rows: string[][] = []
+  let index = startIndex + 2
+
+  while (index < lines.length && (lines[index]?.trim() ?? "").includes("|")) {
+    rows.push(splitTableRow(lines[index] ?? ""))
+    index += 1
+  }
+
+  return { headers, rows, nextIndex: index }
+}
+
+function renderTable(headers: string[], rows: string[][]) {
+  return [
+    '<div class="analysis-markdown-table"><table>',
+    `<thead><tr>${headers.map((header) => `<th>${renderInline(header)}</th>`).join("")}</tr></thead>`,
+    `<tbody>${rows
+      .map(
+        (row) =>
+          `<tr>${headers
+            .map((_, index) => `<td>${renderInline(row[index] ?? "")}</td>`)
+            .join("")}</tr>`
+      )
+      .join("")}</tbody>`,
+    "</table></div>",
+  ].join("")
+}
+
+function splitTableRow(value: string) {
+  return value
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim())
+}
+
+function renderInline(value: string) {
+  const escaped = escapeHtml(value)
+
+  return escaped
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>")
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
 }

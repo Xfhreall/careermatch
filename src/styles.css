@@ -160,10 +160,81 @@
   .text-editorial {
     @apply font-heading tracking-normal;
   }
-}
 
-@media print {
-  [data-slot="tabs-content"][data-state="inactive"] {
-    display: block !important;
+  .analysis-markdown {
+    @apply flex flex-col gap-4 text-sm leading-7 text-foreground;
+  }
+
+  .analysis-markdown h2 {
+    @apply mt-2 font-heading font-semibold text-2xl leading-tight;
+  }
+
+  .analysis-markdown h3 {
+    @apply mt-1 font-medium text-lg leading-7;
+  }
+
+  .analysis-markdown h4 {
+    @apply font-medium text-base leading-7;
+  }
+
+  .analysis-markdown p {
+    @apply text-muted-foreground;
+  }
+
+  .analysis-markdown strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .analysis-markdown em {
+    @apply text-foreground;
+  }
+
+  .analysis-markdown ul,
+  .analysis-markdown ol {
+    @apply flex flex-col gap-2 pl-5 text-muted-foreground;
+  }
+
+  .analysis-markdown ul {
+    @apply list-disc;
+  }
+
+  .analysis-markdown ol {
+    @apply list-decimal;
+  }
+
+  .analysis-markdown li::marker {
+    @apply text-accent-foreground;
+  }
+
+  .analysis-markdown blockquote {
+    @apply border-border border-l-2 pl-4 text-muted-foreground italic;
+  }
+
+  .analysis-markdown pre {
+    @apply overflow-x-auto rounded-lg border border-border bg-background p-4 text-xs leading-6;
+  }
+
+  .analysis-markdown code {
+    @apply rounded-md bg-muted px-1.5 py-0.5 font-mono text-foreground text-xs;
+  }
+
+  .analysis-markdown pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .analysis-markdown-table {
+    @apply overflow-x-auto rounded-lg border border-border;
+  }
+
+  .analysis-markdown table {
+    @apply w-full border-collapse text-left;
+  }
+
+  .analysis-markdown th {
+    @apply border-border border-b bg-muted px-3 py-2 font-medium text-foreground text-xs;
+  }
+
+  .analysis-markdown td {
+    @apply border-border border-b px-3 py-2 text-muted-foreground text-xs;
   }
 }
