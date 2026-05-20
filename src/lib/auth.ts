@@ -2,18 +2,50 @@ import { betterAuth } from "better-auth"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { Pool } from "pg"
 
-const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
-
 type RuntimeEnvGlobal = typeof globalThis & {
   __env__?: {
+    BETTER_AUTH_SECRET?: string
+    BETTER_AUTH_URL?: string
+    DATABASE_URL?: string
+    GOOGLE_CLIENT_ID?: string
+    GOOGLE_CLIENT_SECRET?: string
     HYPERDRIVE?: {
       connectionString?: string
     }
+    SUPABASE_DB_URL?: string
   }
 }
 
 function getRuntimeHyperdrive() {
   return (globalThis as RuntimeEnvGlobal).__env__?.HYPERDRIVE
+}
+
+function getRuntimeEnvValue(
+  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>
+) {
+  const runtimeValue = (globalThis as RuntimeEnvGlobal).__env__?.[key]
+
+  if (typeof runtimeValue === "string") {
+    return runtimeValue
+  }
+
+  return process.env[key]
+}
+
+function resolveBaseURL() {
+  return getRuntimeEnvValue("BETTER_AUTH_URL") ?? "http://localhost:3000"
+}
+
+function resolveTrustedOrigins(baseURL: string) {
+  return Array.from(
+    new Set([
+      baseURL,
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001",
+    ])
+  )
 }
 
 function getDatabaseUrl(): string | undefined {
@@ -24,10 +56,13 @@ function getDatabaseUrl(): string | undefined {
   }
 
   // Direct env var — priority 2
-  return process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
+  return (
+    getRuntimeEnvValue("DATABASE_URL") ?? getRuntimeEnvValue("SUPABASE_DB_URL")
+  )
 }
 
 let pool: Pool | undefined
+let poolKey: string | undefined
 
 function getDatabasePool(): Pool | undefined {
   const databaseUrl = getDatabaseUrl()
@@ -36,17 +71,18 @@ function getDatabasePool(): Pool | undefined {
     return undefined
   }
 
-  if (!pool) {
+  if (!pool || poolKey !== databaseUrl) {
     const isHyperdrive = Boolean(getRuntimeHyperdrive())
 
     pool = new Pool({
       connectionString: databaseUrl,
-      max: isHyperdrive ? 10 : 5,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 15000,
+      max: isHyperdrive ? 1 : 2,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 8_000,
       // Hyperdrive handles SSL internally; only set SSL for direct connections
       ssl: isHyperdrive ? undefined : { rejectUnauthorized: false },
     })
+    poolKey = databaseUrl
 
     pool.on("error", (err) => {
       console.error("[DB Pool] Unexpected error:", err.message)
@@ -56,8 +92,29 @@ function getDatabasePool(): Pool | undefined {
   return pool
 }
 
+type AuthRuntimeConfig = {
+  baseURL: string
+  googleClientId: string
+  googleClientSecret: string
+  secret?: string
+  trustedOrigins: string[]
+}
+
+function resolveAuthRuntimeConfig(): AuthRuntimeConfig {
+  const baseURL = resolveBaseURL()
+
+  return {
+    baseURL,
+    googleClientId: getRuntimeEnvValue("GOOGLE_CLIENT_ID") ?? "",
+    googleClientSecret: getRuntimeEnvValue("GOOGLE_CLIENT_SECRET") ?? "",
+    secret: getRuntimeEnvValue("BETTER_AUTH_SECRET"),
+    trustedOrigins: resolveTrustedOrigins(baseURL),
+  }
+}
+
 function createAuthInstance(database?: Pool) {
   const hasDatabase = Boolean(database)
+  const runtimeConfig = resolveAuthRuntimeConfig()
 
   return betterAuth({
     account: {
@@ -82,14 +139,17 @@ function createAuthInstance(database?: Pool) {
       },
       modelName: "accounts",
     },
+    advanced: {
+      useSecureCookies: runtimeConfig.baseURL.startsWith("https://"),
+    },
     appName: "CareerMatch",
-    baseURL,
+    baseURL: runtimeConfig.baseURL,
     database,
     emailAndPassword: {
       enabled: true,
     },
     plugins: [tanstackStartCookies()],
-    secret: process.env.BETTER_AUTH_SECRET,
+    secret: runtimeConfig.secret,
     session: {
       cookieCache: {
         enabled: true,
@@ -109,12 +169,12 @@ function createAuthInstance(database?: Pool) {
     },
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+        clientId: runtimeConfig.googleClientId,
+        clientSecret: runtimeConfig.googleClientSecret,
         prompt: "select_account",
       },
     },
-    trustedOrigins: [baseURL],
+    trustedOrigins: runtimeConfig.trustedOrigins,
     user: {
       additionalFields: {
         role: {
@@ -157,11 +217,32 @@ function createAuthInstance(database?: Pool) {
 }
 
 type AuthInstance = ReturnType<typeof createAuthInstance>
+let authCache: { auth: AuthInstance; key: string } | undefined
+
+function getAuthInstance() {
+  const database = getDatabasePool()
+  const runtimeConfig = resolveAuthRuntimeConfig()
+  const cacheKey = JSON.stringify({
+    baseURL: runtimeConfig.baseURL,
+    databaseUrl: poolKey ?? null,
+    googleClientId: runtimeConfig.googleClientId,
+    hasDatabase: Boolean(database),
+    secret: Boolean(runtimeConfig.secret),
+  })
+
+  if (!authCache || authCache.key !== cacheKey) {
+    authCache = {
+      auth: createAuthInstance(database),
+      key: cacheKey,
+    }
+  }
+
+  return authCache.auth
+}
 
 export async function withAuth<T>(
   callback: (auth: AuthInstance) => Promise<T>
 ): Promise<T> {
-  const database = getDatabasePool()
-  const auth = createAuthInstance(database)
+  const auth = getAuthInstance()
   return callback(auth)
 }
