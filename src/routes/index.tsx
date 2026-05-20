@@ -282,7 +282,7 @@ function LandingPage() {
 
       {/* Hero */}
       <section
-        className="paper-grid relative overflow-hidden border-border border-b bg-[#faf5ed]"
+        className="paper-grid pt-16 relative overflow-hidden border-border border-b bg-[#faf5ed]"
         id="home"
       >
         <motion.div
