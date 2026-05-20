@@ -6,10 +6,18 @@ import {
   DownloadIcon,
   RotateCcwIcon,
 } from "lucide-react"
+import type * as React from "react"
 
 import { Alert, AlertDescription } from "@/shared/components/shadcn/ui/alert"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/shadcn/ui/card"
 import { Progress } from "@/shared/components/shadcn/ui/progress"
 import {
   Tabs,
@@ -98,24 +106,28 @@ export function AnalysisResultView({
       </div>
 
       <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-lg border border-border bg-card p-6">
-          <p className="text-muted-foreground text-sm">Candidate profile</p>
-          <h2 className="mt-3 font-medium text-2xl leading-8">
-            {result.candidateProfile?.summary ??
-              "Profil kandidat tersedia pada Full Report."}
-          </h2>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {candidateSkills.length > 0 ? (
-              candidateSkills.map((skill) => (
-                <Badge key={skill} variant="secondary">
-                  {skill}
-                </Badge>
-              ))
-            ) : (
-              <Badge variant="outline">Skills in report</Badge>
-            )}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardDescription>Profil kandidat</CardDescription>
+            <CardTitle className="text-2xl leading-8">
+              {result.candidateProfile?.summary ??
+                "Profil kandidat tersedia pada Laporan Lengkap."}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {candidateSkills.length > 0 ? (
+                candidateSkills.map((skill) => (
+                  <Badge key={skill} variant="secondary">
+                    {skill}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="outline">Skills in report</Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {topMatch ? (
           <div className="grid gap-4 sm:grid-cols-3">
@@ -134,20 +146,20 @@ export function AnalysisResultView({
             <BriefcaseBusinessIcon aria-hidden="true" />
             <AlertDescription>
               Data job match terstruktur tidak ditemukan. Laporan lengkap tetap
-              tersedia di tab Full Report.
+              tersedia di tab Laporan Lengkap.
             </AlertDescription>
           </Alert>
         )}
       </section>
 
       <Tabs
-        defaultValue={topMatch ? "jobs" : "raw"}
+        defaultValue={topMatch ? "jobs" : "report"}
         onValueChange={handleTabOpened}
       >
         <TabsList className="w-full justify-start overflow-x-auto sm:w-fit">
           <TabsTrigger value="jobs">Job Matches</TabsTrigger>
           <TabsTrigger value="coaching">Career Coach</TabsTrigger>
-          <TabsTrigger value="raw">Full Report</TabsTrigger>
+          <TabsTrigger value="report">Laporan Lengkap</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs">
@@ -180,7 +192,7 @@ export function AnalysisResultView({
                   <BriefcaseBusinessIcon aria-hidden="true" />
                   <p className="font-medium">Belum ada job match terstruktur</p>
                   <p className="max-w-md text-muted-foreground text-sm leading-6">
-                    Buka Full Report untuk melihat output mentah dari backend.
+                    Buka Laporan Lengkap untuk melihat ringkasan hasil analisis.
                   </p>
                 </div>
               )}
@@ -207,63 +219,22 @@ export function AnalysisResultView({
           </motion.section>
         </TabsContent>
 
-        <TabsContent value="raw">
+        <TabsContent value="report">
           <motion.section
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg border border-border bg-card"
+            className="flex flex-col gap-4"
             initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
             transition={transition}
           >
-            <div className="border-border border-b p-6">
-              <p className="text-muted-foreground text-sm">Full report</p>
-              <h2 className="font-medium text-2xl">Pipeline response</h2>
+            <div className="flex flex-col gap-2 border-border border-b pb-4">
+              <p className="text-muted-foreground text-sm">Laporan lengkap</p>
+              <h2 className="font-medium text-2xl">Ringkasan hasil analisis</h2>
+              <p className="max-w-2xl text-muted-foreground text-sm leading-6">
+                Informasi tambahan disusun menjadi bagian ringkas tanpa
+                menampilkan JSON teknis ke pengguna.
+              </p>
             </div>
-            <div className="p-6">
-              {typeof result.rawResponse === "string" ? (
-                <SafeMarkdown value={result.rawResponse} />
-              ) : (
-                <div className="flex flex-col gap-6 text-sm leading-7">
-                  {result.careerCoaching ? (
-                    <section>
-                      <h3 className="mb-3 font-medium text-lg">
-                        Ringkasan Analisis
-                      </h3>
-                      <SafeMarkdown value={result.careerCoaching} />
-                    </section>
-                  ) : null}
-                  {result.candidateProfile?.summary ? (
-                    <section>
-                      <h3 className="mb-2 font-medium text-lg">
-                        Profil Kandidat
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {result.candidateProfile.summary}
-                      </p>
-                    </section>
-                  ) : null}
-                  {result.candidateProfile?.skills?.length ? (
-                    <section>
-                      <h3 className="mb-2 font-medium text-lg">Keahlian</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {result.candidateProfile.skills.map((skill) => (
-                          <Badge key={skill} variant="secondary">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </section>
-                  ) : null}
-                  <details className="group">
-                    <summary className="cursor-pointer text-muted-foreground text-xs transition-colors hover:text-foreground">
-                      Data teknis pipeline (JSON)
-                    </summary>
-                    <pre className="mt-3 max-h-[400px] max-w-full overflow-auto rounded-lg border border-border bg-background p-4 text-xs leading-6">
-                      {JSON.stringify(result.rawResponse, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-              )}
-            </div>
+            <StructuredReport result={result} />
           </motion.section>
         </TabsContent>
       </Tabs>
@@ -280,16 +251,18 @@ function ScorePanel({ label, value }: { label: string; value?: number }) {
   const normalizedValue = value ?? 0
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="mt-2 font-medium text-3xl">{formatScore(value)}</p>
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-muted-foreground text-sm">{label}</p>
+            <p className="mt-2 font-medium text-3xl">{formatScore(value)}</p>
+          </div>
+          <CheckCircle2Icon aria-hidden="true" className="size-5" />
         </div>
-        <CheckCircle2Icon aria-hidden="true" className="size-5" />
-      </div>
-      <Progress className="mt-6" value={normalizedValue} />
-    </div>
+        <Progress className="mt-6" value={normalizedValue} />
+      </CardContent>
+    </Card>
   )
 }
 
@@ -299,4 +272,412 @@ function formatScore(value: number | undefined) {
   }
 
   return `${Math.round(value)}%`
+}
+
+function StructuredReport({ result }: { result: NormalizedAnalysisResponse }) {
+  const parsedResponse = parseMaybeJson(result.rawResponse)
+  const fallbackReport =
+    typeof parsedResponse === "string" ? parsedResponse : ""
+  const pipelineSections = createPipelineSections(parsedResponse)
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        <ReportMetric
+          label="Total rekomendasi"
+          value={String(result.jobMatches.length)}
+        />
+        <ReportMetric
+          label="Top match"
+          value={formatScore(result.jobMatches[0]?.compatibilityScore)}
+        />
+        <ReportMetric
+          label="Skill terdeteksi"
+          value={String(result.candidateProfile?.skills?.length ?? 0)}
+        />
+      </div>
+
+      {result.candidateProfile?.summary ? (
+        <ReportSection title="Profil kandidat">
+          <p className="text-muted-foreground leading-7">
+            {result.candidateProfile.summary}
+          </p>
+        </ReportSection>
+      ) : null}
+
+      {result.candidateProfile?.skills?.length ? (
+        <ReportSection title="Keahlian kandidat">
+          <div className="flex flex-wrap gap-2">
+            {result.candidateProfile.skills.map((skill) => (
+              <Badge key={skill} variant="secondary">
+                {skill}
+              </Badge>
+            ))}
+          </div>
+        </ReportSection>
+      ) : null}
+
+      {result.jobMatches.length > 0 ? (
+        <ReportSection title="Rekomendasi pekerjaan">
+          <div className="grid gap-3">
+            {result.jobMatches.slice(0, 5).map((job, index) => (
+              <Card className="bg-background" key={getJobKey(job)}>
+                <CardHeader className="p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <CardDescription>Prioritas {index + 1}</CardDescription>
+                      <CardTitle className="mt-1 text-base leading-6">
+                        {job.jobTitle}
+                      </CardTitle>
+                      <p className="mt-1 text-muted-foreground text-sm">
+                        {job.company}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {formatScore(job.compatibilityScore)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 p-4 pt-0">
+                  {job.reasoning ? (
+                    <p className="text-muted-foreground text-sm leading-6">
+                      {job.reasoning}
+                    </p>
+                  ) : null}
+                  <SkillRow label="Skill cocok" skills={job.matchedSkills} />
+                  <SkillRow label="Skill gap" skills={job.skillGap} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ReportSection>
+      ) : null}
+
+      {result.careerCoaching ? (
+        <ReportSection title="Career coaching">
+          <SafeMarkdown value={result.careerCoaching} />
+        </ReportSection>
+      ) : null}
+
+      {fallbackReport && !result.careerCoaching ? (
+        <ReportSection title="Output analisis">
+          <SafeMarkdown value={fallbackReport} />
+        </ReportSection>
+      ) : null}
+
+      {pipelineSections.length > 0 ? (
+        <ReportSection title="Detail pendukung analisis">
+          <div className="grid gap-3">
+            {pipelineSections.map((section) => (
+              <Card className="bg-background" key={section.title}>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">{section.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 p-4 pt-0">
+                  {section.items.map((item) => (
+                    <DisplayValue
+                      key={`${section.title}-${item.label}`}
+                      label={item.label}
+                      value={item.value}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ReportSection>
+      ) : null}
+    </div>
+  )
+}
+
+function ReportMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <Card className="bg-background">
+      <CardContent className="p-4">
+        <p className="text-muted-foreground text-sm">{label}</p>
+        <p className="mt-2 font-medium text-2xl">{value}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ReportSection({
+  children,
+  title,
+}: {
+  children: React.ReactNode
+  title: string
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="font-medium text-lg">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function SkillRow({ label, skills }: { label: string; skills: string[] }) {
+  if (skills.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {skills.map((skill) => (
+          <Badge key={skill} variant="secondary">
+            {skill}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type PipelineItem = {
+  label: string
+  value: unknown
+}
+
+type PipelineSection = {
+  title: string
+  items: PipelineItem[]
+}
+
+function createPipelineSections(value: unknown): PipelineSection[] {
+  if (!isRecord(value)) {
+    return []
+  }
+
+  return Object.entries(value)
+    .filter(
+      ([key]) =>
+        ![
+          "analysis_id",
+          "analysisId",
+          "candidate_profile",
+          "candidateProfile",
+          "career_coaching",
+          "careerCoaching",
+          "job_matches",
+          "jobMatches",
+          "rawResponse",
+        ].includes(key)
+    )
+    .map(([key, nestedValue]) => ({
+      title: formatLabel(key),
+      items: isRecord(nestedValue)
+        ? Object.entries(nestedValue).map(([nestedKey, childValue]) => ({
+            label: formatLabel(nestedKey),
+            value: childValue,
+          }))
+        : [{ label: formatLabel(key), value: nestedValue }],
+    }))
+    .filter((section) =>
+      section.items.some((item) => hasReadableValue(item.value))
+    )
+}
+
+function DisplayValue({ label, value }: PipelineItem) {
+  const parsedValue = parseMaybeJson(value)
+
+  if (!hasReadableValue(parsedValue)) {
+    return null
+  }
+
+  if (Array.isArray(parsedValue)) {
+    const primitiveValues = parsedValue.filter(isPrimitiveValue)
+
+    if (primitiveValues.length === parsedValue.length) {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
+            {label}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {primitiveValues.map((item) => (
+              <Badge key={String(item)} variant="secondary">
+                {formatPrimitive(item)}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
+          {label}
+        </p>
+        <div className="grid gap-2">
+          {parsedValue.map((item) => (
+            <div
+              className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3"
+              key={`${label}-${getValueKey(item)}`}
+            >
+              {isRecord(item) ? (
+                Object.entries(item).map(([itemKey, itemValue]) => (
+                  <DisplayValue
+                    key={`${label}-${getValueKey(item)}-${itemKey}`}
+                    label={formatLabel(itemKey)}
+                    value={itemValue}
+                  />
+                ))
+              ) : (
+                <p className="text-sm">{formatPrimitive(item)}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (isRecord(parsedValue)) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
+          {label}
+        </p>
+        <div className="grid gap-2">
+          {Object.entries(parsedValue).map(([key, childValue]) => (
+            <DisplayValue
+              key={`${label}-${key}`}
+              label={formatLabel(key)}
+              value={childValue}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-1">
+      <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
+        {label}
+      </p>
+      <p className="text-sm leading-6">{formatPrimitive(parsedValue)}</p>
+    </div>
+  )
+}
+
+function parseMaybeJson(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value
+  }
+
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue.startsWith("{") && !trimmedValue.startsWith("[")) {
+    return value
+  }
+
+  try {
+    return JSON.parse(trimmedValue)
+  } catch {
+    return value
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isPrimitiveValue(value: unknown) {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  )
+}
+
+function hasReadableValue(value: unknown): boolean {
+  const parsedValue = parseMaybeJson(value)
+
+  if (parsedValue === null || parsedValue === undefined) {
+    return false
+  }
+
+  if (typeof parsedValue === "string") {
+    return parsedValue.trim().length > 0
+  }
+
+  if (Array.isArray(parsedValue)) {
+    return parsedValue.some(hasReadableValue)
+  }
+
+  if (isRecord(parsedValue)) {
+    return Object.values(parsedValue).some(hasReadableValue)
+  }
+
+  return true
+}
+
+function formatLabel(value: string) {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function formatPrimitive(value: unknown) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const date = new Date(value)
+
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date)
+    }
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Ya" : "Tidak"
+  }
+
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? String(value) : value.toFixed(2)
+  }
+
+  return String(value)
+}
+
+function getJobKey(job: { company: string; jobId?: string; jobTitle: string }) {
+  return job.jobId ?? `${job.company}-${job.jobTitle}`
+}
+
+function getValueKey(value: unknown) {
+  if (isRecord(value)) {
+    const idValue =
+      value.id ??
+      value.rank ??
+      value.title ??
+      value.question ??
+      value.company ??
+      value.job_title ??
+      value.jobTitle
+
+    if (isPrimitiveValue(idValue)) {
+      return String(idValue)
+    }
+  }
+
+  if (isPrimitiveValue(value)) {
+    return String(value)
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
 }
