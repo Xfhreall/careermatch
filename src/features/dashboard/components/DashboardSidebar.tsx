@@ -1,25 +1,25 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router"
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   LoaderCircleIcon,
   LogOutIcon,
   XIcon,
-} from "lucide-react";
+} from "lucide-react"
 
-import { buttonVariants } from "@/shared/components/shadcn/ui/button";
-import { cn } from "@/shared/lib/utils";
+import { buttonVariants } from "@/shared/components/shadcn/ui/button"
+import { cn } from "@/shared/lib/utils"
 
-import type { SidebarItem } from "../lib/navigation";
+import type { SidebarItem } from "../lib/navigation"
 
 interface DashboardSidebarProps {
-  items: SidebarItem[];
-  collapsed: boolean;
-  isLoggingOut: boolean;
-  mobileOpen: boolean;
-  onToggleCollapsed: () => void;
-  onLogout: () => void;
-  onToggleMobile: () => void;
+  items: SidebarItem[]
+  collapsed: boolean
+  isLoggingOut: boolean
+  mobileOpen: boolean
+  onToggleCollapsed: () => void
+  onLogout: () => void
+  onToggleMobile: () => void
 }
 
 export function DashboardSidebar({
@@ -44,29 +44,30 @@ export function DashboardSidebar({
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border bg-card transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "fixed top-0 left-0 z-50 flex h-screen flex-col border-border border-r bg-card transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
           collapsed ? "w-16" : "w-64",
-          "hidden md:flex",
+          "hidden md:flex"
         )}
         aria-label="Sidebar navigasi"
       >
-        <div className="flex h-14 items-center border-b border-border px-2">
+        <div className="flex h-14 items-center border-border border-b px-2">
           {!collapsed && (
-            <span className="px-2 font-medium text-foreground">
+            <span className="px-2 font-semibold text-foreground">
               CareerMatch
             </span>
           )}
           <button
+            type="button"
             className={cn(
               buttonVariants({ variant: "ghost", size: "icon-sm" }),
               "ml-auto",
-              collapsed ? "mr-2" : "mr-0",
+              collapsed ? "mr-2" : "mr-0"
             )}
             onClick={onToggleCollapsed}
             aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
           >
             {collapsed ? (
-              <ChevronRightIcon aria-hidden="true" className="size-4 " />
+              <ChevronRightIcon aria-hidden="true" className="size-4" />
             ) : (
               <ChevronLeftIcon aria-hidden="true" className="size-4" />
             )}
@@ -76,33 +77,37 @@ export function DashboardSidebar({
         <nav className="flex-1 overflow-y-auto p-2">
           <ul className="flex flex-col gap-1">
             {items.map((item) => {
-              const Icon = item.icon;
+              const Icon = item.icon
               return (
                 <li key={item.href}>
                   <Link
                     to={item.href}
+                    activeProps={{
+                      className:
+                        "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary",
+                    }}
                     className={cn(
                       buttonVariants({ variant: "ghost", size: "default" }),
                       "w-full justify-start gap-3",
-                      collapsed && "justify-center px-2",
+                      collapsed && "justify-center px-2"
                     )}
                   >
-                    <Icon aria-hidden="true" className="shrink-0 size-5" />
+                    <Icon aria-hidden="true" className="size-5 shrink-0" />
                     {!collapsed && <span>{item.label}</span>}
                   </Link>
                 </li>
-              );
+              )
             })}
           </ul>
         </nav>
 
-        <div className="border-t border-border p-2">
+        <div className="border-border border-t p-2">
           <button
             type="button"
             className={cn(
               buttonVariants({ variant: "ghost", size: "default" }),
               "w-full justify-start gap-3 text-destructive hover:text-destructive",
-              collapsed && "justify-center px-2",
+              collapsed && "justify-center px-2"
             )}
             disabled={isLoggingOut}
             onClick={onLogout}
@@ -126,16 +131,17 @@ export function DashboardSidebar({
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed top-0 left-0 z-50 flex h-screen w-64 flex-col border-border border-r bg-card transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
         aria-label="Sidebar navigasi"
       >
-        <div className="flex h-14 items-center justify-between border-b border-border px-4">
+        <div className="flex h-14 items-center justify-between border-border border-b px-4">
           <span className="font-medium text-foreground">CareerMatch</span>
           <button
+            type="button"
             className={cn(
-              buttonVariants({ variant: "ghost", size: "icon-sm" }),
+              buttonVariants({ variant: "ghost", size: "icon-sm" })
             )}
             onClick={onToggleMobile}
             aria-label="Tutup sidebar"
@@ -147,32 +153,36 @@ export function DashboardSidebar({
         <nav className="flex-1 overflow-y-auto p-2">
           <ul className="flex flex-col gap-1">
             {items.map((item) => {
-              const Icon = item.icon;
+              const Icon = item.icon
               return (
                 <li key={item.href}>
                   <Link
                     to={item.href}
+                    activeProps={{
+                      className:
+                        "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary",
+                    }}
                     className={cn(
                       buttonVariants({ variant: "ghost", size: "default" }),
-                      "w-full justify-start gap-3",
+                      "w-full justify-start gap-3"
                     )}
                     onClick={onToggleMobile}
                   >
-                    <Icon aria-hidden="true" className="shrink-0 size-5" />
+                    <Icon aria-hidden="true" className="size-5 shrink-0" />
                     <span>{item.label}</span>
                   </Link>
                 </li>
-              );
+              )
             })}
           </ul>
         </nav>
 
-        <div className="border-t border-border p-2">
+        <div className="border-border border-t p-2">
           <button
             type="button"
             className={cn(
               buttonVariants({ variant: "ghost", size: "default" }),
-              "w-full justify-start gap-3 text-destructive hover:text-destructive",
+              "w-full justify-start gap-3 text-destructive hover:text-destructive"
             )}
             disabled={isLoggingOut}
             onClick={onLogout}
@@ -191,5 +201,5 @@ export function DashboardSidebar({
         </div>
       </aside>
     </>
-  );
+  )
 }
