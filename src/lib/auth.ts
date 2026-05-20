@@ -1,35 +1,43 @@
-import { betterAuth } from "better-auth";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { Pool } from "pg";
+import { betterAuth } from "better-auth"
+import { tanstackStartCookies } from "better-auth/tanstack-start"
+import { Pool } from "pg"
 
-const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+
+type RuntimeEnvGlobal = typeof globalThis & {
+  __env__?: {
+    HYPERDRIVE?: {
+      connectionString?: string
+    }
+  }
+}
+
+function getRuntimeHyperdrive() {
+  return (globalThis as RuntimeEnvGlobal).__env__?.HYPERDRIVE
+}
 
 function getDatabaseUrl(): string | undefined {
   // Cloudflare Hyperdrive binding — priority 1
-  const hyperdrive = (globalThis as any).__env__?.HYPERDRIVE as
-    | { connectionString?: string }
-    | undefined;
+  const hyperdrive = getRuntimeHyperdrive()
   if (hyperdrive?.connectionString) {
-    return hyperdrive.connectionString;
+    return hyperdrive.connectionString
   }
 
   // Direct env var — priority 2
-  return process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
+  return process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
 }
 
-let pool: Pool | undefined;
+let pool: Pool | undefined
 
 function getDatabasePool(): Pool | undefined {
-  const databaseUrl = getDatabaseUrl();
+  const databaseUrl = getDatabaseUrl()
 
   if (!databaseUrl || databaseUrl.trim().length === 0) {
-    return undefined;
+    return undefined
   }
 
   if (!pool) {
-    const isHyperdrive = Boolean(
-      (globalThis as any).__env__?.HYPERDRIVE,
-    );
+    const isHyperdrive = Boolean(getRuntimeHyperdrive())
 
     pool = new Pool({
       connectionString: databaseUrl,
@@ -37,21 +45,19 @@ function getDatabasePool(): Pool | undefined {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 15000,
       // Hyperdrive handles SSL internally; only set SSL for direct connections
-      ssl: isHyperdrive
-        ? undefined
-        : { rejectUnauthorized: false },
-    });
+      ssl: isHyperdrive ? undefined : { rejectUnauthorized: false },
+    })
 
     pool.on("error", (err) => {
-      console.error("[DB Pool] Unexpected error:", err.message);
-    });
+      console.error("[DB Pool] Unexpected error:", err.message)
+    })
   }
 
-  return pool;
+  return pool
 }
 
 function createAuthInstance(database?: Pool) {
-  const hasDatabase = Boolean(database);
+  const hasDatabase = Boolean(database)
 
   return betterAuth({
     account: {
@@ -147,20 +153,15 @@ function createAuthInstance(database?: Pool) {
       modelName: "verifications",
       storeInDatabase: hasDatabase,
     },
-  });
+  })
 }
 
-type AuthInstance = ReturnType<typeof createAuthInstance>;
+type AuthInstance = ReturnType<typeof createAuthInstance>
 
 export async function withAuth<T>(
   callback: (auth: AuthInstance) => Promise<T>
 ): Promise<T> {
-  console.log("[withAuth] start, pool exists:", Boolean(pool))
-  const database = getDatabasePool();
-  console.log("[withAuth] pool acquired:", Boolean(database))
-  const auth = createAuthInstance(database);
-  console.log("[withAuth] auth instance created")
-  const result = callback(auth);
-  console.log("[withAuth] callback returned, isPromise:", result instanceof Promise)
-  return result;
+  const database = getDatabasePool()
+  const auth = createAuthInstance(database)
+  return callback(auth)
 }
