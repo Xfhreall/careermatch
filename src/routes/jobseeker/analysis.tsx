@@ -1,5 +1,10 @@
 import { useEffect } from "react"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router"
 
 import { requireRole } from "@/features/dashboard/lib/auth-middleware"
 
@@ -10,10 +15,17 @@ export const Route = createFileRoute("/jobseeker/analysis")({
 
 function AnalysisLegacyRedirect() {
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const isParentRoute = location.pathname === "/jobseeker/analysis"
 
   useEffect(() => {
-    void navigate({ replace: true, to: "/jobseeker/history" })
-  }, [navigate])
+    if (isParentRoute) {
+      void navigate({ replace: true, to: "/jobseeker/history" })
+    }
+  }, [isParentRoute, navigate])
 
-  return null
+  if (isParentRoute) return null
+
+  return <Outlet />
 }
