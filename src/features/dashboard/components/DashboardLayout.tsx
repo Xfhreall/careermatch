@@ -113,23 +113,25 @@ export function DashboardLayout({
   return (
     <div className="paper-grid min-h-screen overflow-x-hidden bg-background">
       <RoleAccessGuard allowedRoles={effectiveAllowedRoles} />
-      <DashboardSidebar
-        items={sidebarItems}
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileSidebarOpen}
-        isLoggingOut={isLoggingOut}
-        onToggleCollapsed={handleToggleCollapsed}
-        onLogout={handleLogout}
-        onToggleMobile={handleToggleMobile}
-      />
+      <div className="print:hidden">
+        <DashboardSidebar
+          items={sidebarItems}
+          collapsed={sidebarCollapsed}
+          mobileOpen={mobileSidebarOpen}
+          isLoggingOut={isLoggingOut}
+          onToggleCollapsed={handleToggleCollapsed}
+          onLogout={handleLogout}
+          onToggleMobile={handleToggleMobile}
+        />
+      </div>
 
       <div
         className={cn(
-          "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] print:!ml-0",
           sidebarCollapsed ? "md:ml-16" : "md:ml-64"
         )}
       >
-        <header className="sticky top-0 z-30 flex h-14 items-center border-border border-b bg-card/95 px-4 backdrop-blur md:px-6">
+        <header className="print:hidden sticky top-0 z-30 flex h-14 items-center border-border border-b bg-card/95 px-4 backdrop-blur md:px-6">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center">
               <Button

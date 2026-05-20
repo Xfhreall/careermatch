@@ -161,3 +161,9 @@
     @apply font-heading tracking-normal;
   }
 }
+
+@media print {
+  [data-slot="tabs-content"][data-state="inactive"] {
+    display: block !important;
+  }
+}

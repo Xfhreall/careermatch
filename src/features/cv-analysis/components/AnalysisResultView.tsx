@@ -222,9 +222,46 @@ export function AnalysisResultView({
               {typeof result.rawResponse === "string" ? (
                 <SafeMarkdown value={result.rawResponse} />
               ) : (
-                <pre className="max-h-[520px] max-w-full overflow-auto rounded-lg border border-border bg-background p-4 text-xs leading-6">
-                  {JSON.stringify(result.rawResponse, null, 2)}
-                </pre>
+                <div className="flex flex-col gap-6 text-sm leading-7">
+                  {result.careerCoaching ? (
+                    <section>
+                      <h3 className="mb-3 font-medium text-lg">
+                        Ringkasan Analisis
+                      </h3>
+                      <SafeMarkdown value={result.careerCoaching} />
+                    </section>
+                  ) : null}
+                  {result.candidateProfile?.summary ? (
+                    <section>
+                      <h3 className="mb-2 font-medium text-lg">
+                        Profil Kandidat
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {result.candidateProfile.summary}
+                      </p>
+                    </section>
+                  ) : null}
+                  {result.candidateProfile?.skills?.length ? (
+                    <section>
+                      <h3 className="mb-2 font-medium text-lg">Keahlian</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {result.candidateProfile.skills.map((skill) => (
+                          <Badge key={skill} variant="secondary">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                  <details className="group">
+                    <summary className="cursor-pointer text-muted-foreground text-xs transition-colors hover:text-foreground">
+                      Data teknis pipeline (JSON)
+                    </summary>
+                    <pre className="mt-3 max-h-[400px] max-w-full overflow-auto rounded-lg border border-border bg-background p-4 text-xs leading-6">
+                      {JSON.stringify(result.rawResponse, null, 2)}
+                    </pre>
+                  </details>
+                </div>
               )}
             </div>
           </motion.section>
