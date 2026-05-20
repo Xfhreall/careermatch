@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { FileSearchIcon } from "lucide-react";
+import { AlertCircleIcon, FileSearchIcon, RefreshCwIcon } from "lucide-react";
 
 import {
   deleteAnalysisResultRequest,
   fetchAnalysisResult,
 } from "@/features/cv-analysis/api-client";
 import { AnalysisResultView } from "@/features/cv-analysis/components/AnalysisResultView";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/components/shadcn/ui/alert";
 import { Button } from "@/shared/components/shadcn/ui/button";
 import {
   Empty,
@@ -54,6 +55,40 @@ export function JobseekerAnalysisDetailContainer({
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-80 w-full" />
           </div>
+        ) : resultQuery.error ? (
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.28 }}
+          >
+            <Alert variant="destructive">
+              <AlertCircleIcon aria-hidden="true" />
+              <AlertTitle>Gagal memuat hasil analisis</AlertTitle>
+              <AlertDescription>
+                {resultQuery.error instanceof Error
+                  ? resultQuery.error.message
+                  : "Terjadi kesalahan saat menghubungi server."}
+              </AlertDescription>
+            </Alert>
+            <div className="mt-4 flex gap-3">
+              <Button
+                onClick={() => resultQuery.refetch()}
+                size="sm"
+                variant="outline"
+              >
+                <RefreshCwIcon aria-hidden="true" className="mr-2 size-4" />
+                Coba lagi
+              </Button>
+              <Button
+                nativeButton={false}
+                render={<Link to="/jobseeker/dashboard" />}
+                size="sm"
+                variant="ghost"
+              >
+                Kembali ke dashboard
+              </Button>
+            </div>
+          </motion.div>
         ) : resultQuery.data ? (
           <AnalysisResultView onReset={handleReset} result={resultQuery.data} />
         ) : (

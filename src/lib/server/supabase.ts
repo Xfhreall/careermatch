@@ -1,12 +1,27 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
+type RuntimeEnvGlobal = typeof globalThis & {
+  __env__?: {
+    SUPABASE_URL?: string
+    SUPABASE_SERVICE_ROLE_KEY?: string
+  }
+}
+
+function getRuntimeEnvValue(
+  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>,
+): string | undefined {
+  const runtimeValue = (globalThis as RuntimeEnvGlobal).__env__?.[key]
+  if (typeof runtimeValue === "string") return runtimeValue
+  return process.env[key]
+}
+
 let cachedAdminClient: SupabaseClient | null = null
 const ensuredBuckets = new Set<string>()
 
 export function getSupabaseStatus() {
   const missing = [
-    ["SUPABASE_URL", process.env.SUPABASE_URL],
-    ["SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY],
+    ["SUPABASE_URL", getRuntimeEnvValue("SUPABASE_URL")],
+    ["SUPABASE_SERVICE_ROLE_KEY", getRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY")],
   ]
     .filter(([, value]) => !value)
     .map(([key]) => key)
@@ -26,17 +41,16 @@ export function getSupabaseAdmin() {
     )
   }
 
+  const url = getRuntimeEnvValue("SUPABASE_URL") as string
+  const key = getRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY") as string
+
   if (!cachedAdminClient) {
-    cachedAdminClient = createClient(
-      process.env.SUPABASE_URL as string,
-      process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    )
+    cachedAdminClient = createClient(url, key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
   }
 
   return cachedAdminClient
