@@ -62,10 +62,6 @@ export function SessionUserCacheSync() {
     }
 
     setUserCache(queryClient, sessionUser);
-    void queryClient.invalidateQueries({
-      queryKey: userQueryKey,
-      refetchType: "active",
-    });
     lastUserSignatureRef.current = nextUserSignature;
   }, [queryClient, session.data?.user, session.isPending]);
 
