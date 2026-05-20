@@ -11,6 +11,9 @@ import {
 } from "@/lib/server/careermatch-repository"
 import { jsonError } from "@/lib/server/http"
 
+const DEFAULT_N8N_WEBHOOK_URL =
+  "https://pmhardika.app.n8n.cloud/webhook-test/ai-interview-feedback"
+
 export const Route = createFileRoute("/api/cv/analyze")({
   server: {
     handlers: {
@@ -21,7 +24,8 @@ export const Route = createFileRoute("/api/cv/analyze")({
           return auth.response
         }
 
-        const webhookUrl = process.env.N8N_WEBHOOK_URL
+        const webhookUrl =
+          process.env.N8N_WEBHOOK_URL ?? DEFAULT_N8N_WEBHOOK_URL
 
         if (!webhookUrl) {
           return Response.json(
