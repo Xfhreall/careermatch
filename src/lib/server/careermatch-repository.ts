@@ -17,6 +17,8 @@ type SessionUser = {
   name?: string | null
 }
 
+type AccessRole = "hrd" | "jobseeker" | "superadmin"
+
 export async function uploadCvToStorage(userId: string, file: File) {
   const supabase = getSupabaseAdmin()
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase()
@@ -160,30 +162,40 @@ export async function deleteAnalysisResult(userId: string, analysisId: string) {
   }
 }
 
-export async function getHrdDashboard() {
+export async function getHrdDashboard(user: SessionUser, role: AccessRole) {
+  const companyId =
+    role === "superadmin" ? undefined : await resolveCompanyId(user)
+  const jobs = await listHrdJobs({ companyId })
+
   return {
-    anonymousCandidates: await listAnonymousCandidates(),
-    jobs: await listHrdJobs(),
+    anonymousCandidates: await listAnonymousCandidates({
+      jobIds: jobs.map((job) => job.id),
+    }),
+    jobs,
   }
 }
 
-export async function createDefaultHrdJob(user: SessionUser) {
+export async function createHrdJob(
+  user: SessionUser,
+  input: {
+    description: string
+    minYears: number
+    skills: string[]
+    status: "active" | "closed" | "draft"
+    title: string
+  }
+) {
   const supabase = getSupabaseAdmin()
   const companyId = await resolveCompanyId(user)
-  const { count } = await supabase
-    .from("job_postings")
-    .select("id", { count: "exact", head: true })
-  const nextIndex = (count ?? 0) + 1
   const { error } = await supabase.from("job_postings").insert({
     company_id: companyId,
     created_by: user.id,
-    description:
-      "Lowongan baru dari dashboard HRD. Lengkapi detail sebelum dipublikasikan.",
-    embedding_status: "synced",
-    min_experience_years: 1,
-    required_skills: ["Communication", "Problem solving"],
-    status: "active",
-    title: `New Role ${nextIndex}`,
+    description: input.description,
+    embedding_status: "pending",
+    min_experience_years: input.minYears,
+    required_skills: input.skills,
+    status: input.status,
+    title: input.title,
   })
 
   if (error) {
@@ -191,12 +203,68 @@ export async function createDefaultHrdJob(user: SessionUser) {
   }
 }
 
-export async function refreshHrdEmbeddings() {
+export async function refreshHrdEmbeddings(
+  user: SessionUser,
+  role: AccessRole
+) {
   const supabase = getSupabaseAdmin()
-  const { error } = await supabase
+  let query = supabase
     .from("job_postings")
     .update({ embedding_status: "synced" })
     .eq("status", "active")
+
+  if (role !== "superadmin") {
+    query = query.eq("company_id", await resolveCompanyId(user))
+  }
+
+  const { error } = await query
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function updateHrdJob(
+  user: SessionUser,
+  role: AccessRole,
+  input: {
+    id: string
+    minYears: number
+    description: string
+    skills: string[]
+    status: "active" | "closed" | "draft"
+    title: string
+  }
+) {
+  const supabase = getSupabaseAdmin()
+  await assertCanAccessJob(input.id, user, role)
+
+  const { error } = await supabase
+    .from("job_postings")
+    .update({
+      description: input.description,
+      embedding_status: "pending",
+      min_experience_years: input.minYears,
+      required_skills: input.skills,
+      status: input.status,
+      title: input.title,
+    })
+    .eq("id", input.id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function deleteHrdJob(
+  user: SessionUser,
+  role: AccessRole,
+  jobId: string
+) {
+  const supabase = getSupabaseAdmin()
+  await assertCanAccessJob(jobId, user, role)
+
+  const { error } = await supabase.from("job_postings").delete().eq("id", jobId)
 
   if (error) {
     throw new Error(error.message)
@@ -240,21 +308,75 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       String(row.role),
       String(row.status),
     ]),
-    modelConfig: models.map((row) => [
-      String(row.agent),
-      String(row.model),
-      String(row.purpose),
-    ]),
+    modelConfig: models.map((row) => ({
+      agent: String(row.agent),
+      key: String(row.key),
+      model: String(row.model),
+      purpose: String(row.purpose),
+    })),
     monitoringCards: metrics.map((row) => ({
       label: String(row.label),
       title: String(row.title),
       value: String(row.value),
     })),
-    scoringWeights: scoring.map((row) => [
-      String(row.label),
-      Number(row.weight),
-    ]),
+    scoringWeights: scoring.map((row) => ({
+      key: String(row.key),
+      label: String(row.label),
+      weight: Number(row.weight),
+    })),
   }
+}
+
+export async function updateScoringConfig(input: {
+  key: string
+  reviewerId: string
+  weight: number
+}) {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase
+    .from("scoring_configs")
+    .update({
+      updated_by: input.reviewerId,
+      weight: input.weight,
+    })
+    .eq("key", input.key)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  await supabase.from("audit_events").insert({
+    actor_id: input.reviewerId,
+    detail: `${input.key} weight set to ${input.weight}%`,
+    event: "scoring.weight.updated",
+  })
+}
+
+export async function updateModelConfig(input: {
+  key: string
+  model: string
+  purpose: string
+  reviewerId: string
+}) {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase
+    .from("model_configs")
+    .update({
+      model: input.model,
+      purpose: input.purpose,
+      updated_by: input.reviewerId,
+    })
+    .eq("key", input.key)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  await supabase.from("audit_events").insert({
+    actor_id: input.reviewerId,
+    detail: `${input.key} model set to ${input.model}`,
+    event: "model.config.updated",
+  })
 }
 
 export async function updateHrdApproval(input: {
@@ -296,14 +418,22 @@ export async function updateHrdApproval(input: {
   })
 }
 
-async function listHrdJobs(): Promise<HrdJobRecord[]> {
+async function listHrdJobs(options?: {
+  companyId?: string
+}): Promise<HrdJobRecord[]> {
   const supabase = getSupabaseAdmin()
-  const { data: jobs, error } = await supabase
+  let query = supabase
     .from("job_postings")
     .select(
-      "id, company_id, title, required_skills, min_experience_years, status, embedding_status, created_at"
+      "id, company_id, title, description, required_skills, min_experience_years, status, embedding_status, created_at"
     )
     .order("created_at", { ascending: false })
+
+  if (options?.companyId) {
+    query = query.eq("company_id", options.companyId)
+  }
+
+  const { data: jobs, error } = await query
 
   if (error) {
     throw new Error(error.message)
@@ -319,6 +449,7 @@ async function listHrdJobs(): Promise<HrdJobRecord[]> {
   return (jobs ?? []).map((job) => ({
     candidates: candidateCounts.get(String(job.id)) ?? 0,
     company: companies.get(String(job.company_id)) ?? "CareerMatch Partner",
+    description: String(job.description ?? ""),
     embedding: titleCase(String(job.embedding_status ?? "pending")),
     id: String(job.id),
     minYears: Number(job.min_experience_years ?? 0),
@@ -328,13 +459,25 @@ async function listHrdJobs(): Promise<HrdJobRecord[]> {
   }))
 }
 
-async function listAnonymousCandidates(): Promise<AnonymousCandidateRecord[]> {
+async function listAnonymousCandidates(options?: {
+  jobIds?: string[]
+}): Promise<AnonymousCandidateRecord[]> {
+  if (options?.jobIds && options.jobIds.length === 0) {
+    return []
+  }
+
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  let query = supabase
     .from("anonymous_candidate_matches")
     .select("candidate_code, role_title, match_score, matched_skills")
     .order("match_score", { ascending: false })
     .limit(20)
+
+  if (options?.jobIds) {
+    query = query.in("job_posting_id", options.jobIds)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     throw new Error(error.message)
@@ -390,6 +533,37 @@ async function syncAnonymousCandidateMatches(
 
   if (error) {
     throw new Error(error.message)
+  }
+}
+
+async function assertCanAccessJob(
+  jobId: string,
+  user: SessionUser,
+  role: AccessRole
+) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("job_postings")
+    .select("id, company_id")
+    .eq("id", jobId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) {
+    throw new Error("Lowongan tidak ditemukan.")
+  }
+
+  if (role === "superadmin") {
+    return
+  }
+
+  const companyId = await resolveCompanyId(user)
+
+  if (String(data.company_id) !== companyId) {
+    throw new Error("Lowongan ini bukan milik perusahaan Anda.")
   }
 }
 

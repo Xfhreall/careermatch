@@ -9,12 +9,54 @@ export type HrdDashboardPayload = {
   jobs: HrdJobRecord[]
 }
 
+export type HrdJobInput = {
+  description: string
+  minYears: number
+  skills: string[]
+  status: "active" | "closed" | "draft"
+  title: string
+}
+
 export async function fetchHrdDashboard(): Promise<HrdDashboardPayload> {
   return fetchJson("/api/hrd/dashboard")
 }
 
-export async function createHrdJob(): Promise<HrdDashboardPayload> {
-  return fetchJson("/api/hrd/jobs", { method: "POST" })
+export async function createHrdJob(
+  input: HrdJobInput
+): Promise<HrdDashboardPayload> {
+  return fetchJson("/api/hrd/jobs", {
+    body: JSON.stringify(input),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "POST",
+  })
+}
+
+export async function updateHrdJob(
+  input: HrdJobInput & {
+    id: string
+  }
+): Promise<HrdDashboardPayload> {
+  return fetchJson("/api/hrd/jobs", {
+    body: JSON.stringify(input),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "PATCH",
+  })
+}
+
+export async function deleteHrdJob(input: {
+  id: string
+}): Promise<HrdDashboardPayload> {
+  return fetchJson("/api/hrd/jobs", {
+    body: JSON.stringify(input),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "DELETE",
+  })
 }
 
 export async function refreshHrdEmbeddings(): Promise<HrdDashboardPayload> {
@@ -31,6 +73,39 @@ export async function updateHrdApprovalRequest(input: {
 }): Promise<SuperadminSnapshot> {
   return fetchJson("/api/superadmin/hrd-approval", {
     body: JSON.stringify(input),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "PATCH",
+  })
+}
+
+export async function updateSuperadminScoringConfig(input: {
+  key: string
+  weight: number
+}): Promise<SuperadminSnapshot> {
+  return fetchJson("/api/superadmin/model-config", {
+    body: JSON.stringify({
+      ...input,
+      kind: "scoring",
+    }),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "PATCH",
+  })
+}
+
+export async function updateSuperadminModelConfig(input: {
+  key: string
+  model: string
+  purpose: string
+}): Promise<SuperadminSnapshot> {
+  return fetchJson("/api/superadmin/model-config", {
+    body: JSON.stringify({
+      ...input,
+      kind: "model",
+    }),
     headers: {
       "content-type": "application/json",
     },

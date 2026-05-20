@@ -1,6 +1,7 @@
 export type HrdJobRecord = {
   candidates: number
   company: string
+  description: string
   embedding: string
   id: string
   minYears: number
@@ -16,6 +17,19 @@ export type AnonymousCandidateRecord = {
   skills: string
 }
 
+export type ModelConfigRecord = {
+  agent: string
+  key: string
+  model: string
+  purpose: string
+}
+
+export type ScoringConfigRecord = {
+  key: string
+  label: string
+  weight: number
+}
+
 export type SuperadminSnapshot = {
   auditEvents: Array<[string, string, string]>
   hrdApprovalQueue: Array<{
@@ -26,11 +40,11 @@ export type SuperadminSnapshot = {
   }>
   jobs: HrdJobRecord[]
   managedUsers: Array<[string, string, string, string]>
-  modelConfig: Array<[string, string, string]>
+  modelConfig: ModelConfigRecord[]
   monitoringCards: Array<{
     label: string
     title: string
     value: string
   }>
-  scoringWeights: Array<[string, number]>
+  scoringWeights: ScoringConfigRecord[]
 }

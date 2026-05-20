@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef } from "@tanstack/react-table"
 
 import { fetchHrdDashboard } from "@/features/platform/api-client"
 import type { AnonymousCandidateRecord } from "@/features/platform/types"
@@ -21,12 +21,15 @@ const columns: ColumnDef<AnonymousCandidateRecord>[] = [
     accessorKey: "skills",
     header: "Keahlian",
     cell: ({ row }) => {
-      const skills = (row.getValue("skills") as string).split(",")
+      const skills = (row.getValue("skills") as string)
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter(Boolean)
       return (
         <div className="flex flex-wrap gap-1">
           {skills.slice(0, 3).map((skill) => (
-            <Badge key={skill.trim()} variant="secondary" className="text-xs">
-              {skill.trim()}
+            <Badge key={skill} variant="secondary" className="text-xs">
+              {skill}
             </Badge>
           ))}
           {skills.length > 3 && (
@@ -59,7 +62,8 @@ export function HrdCandidatesContainer() {
       <div className="mb-6">
         <h1 className="font-medium text-2xl">Kandidat Anonim</h1>
         <p className="text-muted-foreground text-sm">
-          Daftar kandidat yang cocok dengan lowongan Anda (identitas disembunyikan).
+          Daftar kandidat yang cocok dengan lowongan Anda (identitas
+          disembunyikan).
         </p>
       </div>
       <DataTable

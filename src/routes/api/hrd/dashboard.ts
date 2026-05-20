@@ -14,7 +14,9 @@ export const Route = createFileRoute("/api/hrd/dashboard")({
         }
 
         try {
-          return Response.json(await getHrdDashboard())
+          return Response.json(
+            await getHrdDashboard(auth.session.user, auth.role)
+          )
         } catch (error) {
           return jsonError(error, "Gagal membaca dashboard HRD.")
         }

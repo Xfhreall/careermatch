@@ -1,8 +1,13 @@
-import { useQuery } from "@tanstack/react-query"
-import { type ColumnDef } from "@tanstack/react-table"
-import { EyeIcon, DownloadIcon, TrashIcon } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DownloadIcon, EyeIcon, TrashIcon } from "lucide-react"
+import { toast } from "sonner"
 
-import { fetchAnalysisHistory } from "@/features/cv-analysis/api-client"
+import {
+  deleteAnalysisResultRequest,
+  fetchAnalysisHistory,
+} from "@/features/cv-analysis/api-client"
 import type { AnalysisHistoryItem } from "@/features/cv-analysis/types"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
@@ -23,82 +28,100 @@ function formatDate(dateStr: string): string {
   })
 }
 
-const columns: ColumnDef<AnalysisHistoryItem>[] = [
-  {
-    accessorKey: "createdAt",
-    header: "Tanggal",
-    cell: ({ row }) => formatDate(row.getValue("createdAt")),
-  },
-  {
-    accessorKey: "topRole",
-    header: "Posisi Teratas",
-    cell: ({ row }) => row.getValue("topRole") || "-",
-  },
-  {
-    accessorKey: "topCompany",
-    header: "Perusahaan",
-    cell: ({ row }) => row.getValue("topCompany") || "-",
-  },
-  {
-    accessorKey: "topScore",
-    header: "Skor",
-    cell: ({ row }) => {
-      const score = row.getValue("topScore") as number | undefined
-      return score != null ? (
-        <Badge variant={score >= 70 ? "default" : score >= 50 ? "secondary" : "destructive"}>
-          {formatScore(score)}
-        </Badge>
-      ) : (
-        "-"
-      )
+function getColumns(
+  onDelete: (item: AnalysisHistoryItem) => void
+): ColumnDef<AnalysisHistoryItem>[] {
+  return [
+    {
+      accessorKey: "createdAt",
+      header: "Tanggal",
+      cell: ({ row }) => formatDate(row.getValue("createdAt")),
     },
-  },
-  {
-    accessorKey: "jobMatchCount",
-    header: "Cocok",
-    cell: ({ row }) => row.getValue("jobMatchCount"),
-  },
-  {
-    id: "actions",
-    header: "Aksi",
-    cell: ({ row }) => {
-      const item = row.original
-      return (
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Lihat detail"
-            onClick={() => {
-              window.location.href = `/jobseeker/analysis/${item.analysisId}`
-            }}
-          >
-            <EyeIcon className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Export laporan"
-            onClick={() => handleExport(item)}
-          >
-            <DownloadIcon className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Hapus"
-            onClick={() => handleDelete(item)}
-          >
-            <TrashIcon className="size-3.5 text-destructive" />
-          </Button>
-        </div>
-      )
+    {
+      accessorKey: "topRole",
+      header: "Posisi Teratas",
+      cell: ({ row }) => row.getValue("topRole") || "-",
     },
-  },
-]
+    {
+      accessorKey: "topCompany",
+      header: "Perusahaan",
+      cell: ({ row }) => row.getValue("topCompany") || "-",
+    },
+    {
+      accessorKey: "topScore",
+      header: "Skor",
+      cell: ({ row }) => {
+        const score = row.getValue("topScore") as number | undefined
+        return score != null ? (
+          <Badge
+            variant={
+              score >= 70
+                ? "default"
+                : score >= 50
+                  ? "secondary"
+                  : "destructive"
+            }
+          >
+            {formatScore(score)}
+          </Badge>
+        ) : (
+          "-"
+        )
+      },
+    },
+    {
+      accessorKey: "jobMatchCount",
+      header: "Cocok",
+      cell: ({ row }) => row.getValue("jobMatchCount"),
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              nativeButton={false}
+              render={
+                <Link
+                  params={{ analysisId: item.analysisId }}
+                  to="/jobseeker/analysis/$analysisId"
+                />
+              }
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Lihat detail"
+            >
+              <EyeIcon className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Export laporan"
+              onClick={() => handleExport(item)}
+            >
+              <DownloadIcon className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Hapus"
+              onClick={() => onDelete(item)}
+            >
+              <TrashIcon className="size-3.5 text-destructive" />
+            </Button>
+          </div>
+        )
+      },
+    },
+  ]
+}
 
 async function handleExport(item: AnalysisHistoryItem) {
-  const { fetchAnalysisResult } = await import("@/features/cv-analysis/api-client")
+  const { fetchAnalysisResult } = await import(
+    "@/features/cv-analysis/api-client"
+  )
   const result = await fetchAnalysisResult(item.analysisId)
   if (!result) return
 
@@ -128,17 +151,32 @@ async function handleExport(item: AnalysisHistoryItem) {
   URL.revokeObjectURL(url)
 }
 
-function handleDelete(item: AnalysisHistoryItem) {
-  if (confirm(`Hapus analisis "${item.analysisId}"?`)) {
-    console.log("Delete analysis:", item.analysisId)
-  }
-}
-
 export function AnalysisHistoryContainer() {
+  const queryClient = useQueryClient()
   const historyQuery = useQuery({
     queryFn: fetchAnalysisHistory,
     queryKey: ["analysis-history"],
   })
+  const deleteMutation = useMutation({
+    mutationFn: deleteAnalysisResultRequest,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["analysis-history"] })
+      toast.success("Analisis berhasil dihapus.")
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Analisis gagal dihapus."
+      )
+    },
+  })
+
+  function handleDelete(item: AnalysisHistoryItem) {
+    if (!confirm(`Hapus analisis "${item.analysisId}"?`)) {
+      return
+    }
+
+    deleteMutation.mutate(item.analysisId)
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -149,7 +187,7 @@ export function AnalysisHistoryContainer() {
         </p>
       </div>
       <DataTable
-        columns={columns}
+        columns={getColumns(handleDelete)}
         data={historyQuery.data ?? []}
         loading={historyQuery.isLoading}
         searchPlaceholder="Cari berdasarkan posisi atau perusahaan..."

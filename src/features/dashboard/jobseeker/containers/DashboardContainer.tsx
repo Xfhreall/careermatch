@@ -1,20 +1,50 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { FileSearchIcon, HistoryIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
+import {
+  BriefcaseBusinessIcon,
+  DatabaseIcon,
+  FileSearchIcon,
+  HistoryIcon,
+  TrendingUpIcon,
+} from "lucide-react"
 
-import { fetchAnalysisHistory } from "@/features/cv-analysis/api-client";
-import { PlatformHeader } from "@/features/platform/components/PlatformHeader";
-import { dashboardCards } from "@/features/platform/data";
-import { Badge } from "@/shared/components/shadcn/ui/badge";
-import { Button } from "@/shared/components/shadcn/ui/button";
+import { fetchAnalysisHistory } from "@/features/cv-analysis/api-client"
+import { PlatformHeader } from "@/features/platform/components/PlatformHeader"
+import { Badge } from "@/shared/components/shadcn/ui/badge"
+import { Button } from "@/shared/components/shadcn/ui/button"
 
 export function JobseekerDashboardContainer() {
   const historyQuery = useQuery({
     queryFn: fetchAnalysisHistory,
     queryKey: ["analysis-history"],
-  });
-  const historyItems = historyQuery.data ?? [];
-  const latestHistory = historyItems[0];
+  })
+  const historyItems = historyQuery.data ?? []
+  const latestHistory = historyItems[0]
+  const totalMatches = historyItems.reduce(
+    (sum, item) => sum + item.jobMatchCount,
+    0
+  )
+  const latestScore = latestHistory?.topScore
+  const metricCards = [
+    {
+      icon: DatabaseIcon,
+      label: "Analisis tersimpan",
+      value: historyQuery.isLoading ? "..." : String(historyItems.length),
+      helper: "Diambil dari Supabase",
+    },
+    {
+      icon: TrendingUpIcon,
+      label: "Top score terakhir",
+      value: latestScore == null ? "-" : `${Math.round(Number(latestScore))}%`,
+      helper: latestHistory?.topRole ?? "Belum ada hasil",
+    },
+    {
+      icon: BriefcaseBusinessIcon,
+      label: "Total job match",
+      value: historyQuery.isLoading ? "..." : String(totalMatches),
+      helper: "Akumulasi riwayat CV",
+    },
+  ]
 
   return (
     <div className="paper-grid min-h-dvh overflow-x-hidden bg-background">
@@ -26,19 +56,23 @@ export function JobseekerDashboardContainer() {
       />
 
       <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-3 lg:px-8">
-        {dashboardCards.map((card) => (
+        {metricCards.map((card) => (
           <div
             className="rounded-lg border border-border bg-card p-6"
-            key={card.title}
+            key={card.label}
           >
-            <card.icon aria-hidden="true" className="size-5" />
+            <card.icon
+              aria-hidden="true"
+              className="size-5 text-accent-foreground"
+            />
             <div className="mt-5 flex items-start justify-between gap-4">
-              <h2 className="font-medium text-2xl">{card.title}</h2>
-              <Badge variant="outline">{card.status}</Badge>
+              <h2 className="font-medium text-muted-foreground text-sm">
+                {card.label}
+              </h2>
+              <Badge variant="outline">Live</Badge>
             </div>
-            <p className="mt-3 text-muted-foreground text-sm leading-7">
-              {card.body}
-            </p>
+            <p className="mt-3 font-medium text-4xl">{card.value}</p>
+            <p className="mt-3 text-muted-foreground text-sm">{card.helper}</p>
           </div>
         ))}
       </section>
@@ -110,5 +144,5 @@ export function JobseekerDashboardContainer() {
         </div>
       </section>
     </div>
-  );
+  )
 }

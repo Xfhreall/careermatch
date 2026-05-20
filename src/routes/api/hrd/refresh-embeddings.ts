@@ -17,8 +17,10 @@ export const Route = createFileRoute("/api/hrd/refresh-embeddings")({
         }
 
         try {
-          await refreshHrdEmbeddings()
-          return Response.json(await getHrdDashboard())
+          await refreshHrdEmbeddings(auth.session.user, auth.role)
+          return Response.json(
+            await getHrdDashboard(auth.session.user, auth.role)
+          )
         } catch (error) {
           return jsonError(error, "Gagal refresh embeddings.")
         }

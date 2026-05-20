@@ -171,13 +171,13 @@ export function SuperadminMonitoringContainer() {
               </div>
             </div>
             <div className="grid gap-5 p-6">
-              {scoringWeights.map(([label, value]) => (
-                <div key={label}>
+              {scoringWeights.map((item) => (
+                <div key={item.key}>
                   <div className="mb-2 flex items-center justify-between gap-4">
-                    <span className="font-medium">{label}</span>
-                    <Badge variant="outline">{value}%</Badge>
+                    <span className="font-medium">{item.label}</span>
+                    <Badge variant="outline">{item.weight}%</Badge>
                   </div>
-                  <Progress value={value} />
+                  <Progress value={item.weight} />
                 </div>
               ))}
             </div>
@@ -189,16 +189,16 @@ export function SuperadminMonitoringContainer() {
               <h2 className="font-medium text-3xl">Agent configuration</h2>
             </div>
             <div className="divide-y divide-border">
-              {modelConfig.map(([agent, model, purpose]) => (
-                <div className="p-5" key={agent}>
+              {modelConfig.map((item) => (
+                <div className="p-5" key={item.key}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{agent}</p>
+                    <p className="font-medium">{item.agent}</p>
                     <Badge className="bg-accent text-accent-foreground">
-                      {model}
+                      {item.model}
                     </Badge>
                   </div>
                   <p className="mt-2 text-muted-foreground text-sm">
-                    {purpose}
+                    {item.purpose}
                   </p>
                 </div>
               ))}
