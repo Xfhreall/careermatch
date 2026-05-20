@@ -262,7 +262,7 @@ export function AppNavbar() {
               })}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto md:ml-0">
               <div className="hidden sm:block">
                 <AuthNavButton />
               </div>

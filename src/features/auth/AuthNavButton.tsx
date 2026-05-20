@@ -1,92 +1,92 @@
-import { useNavigate } from "@tanstack/react-router"
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { LogInIcon, LogOutIcon, PanelRightOpenIcon } from "lucide-react"
-import * as React from "react"
+import { useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { LogInIcon, LogOutIcon, PanelRightOpenIcon } from "lucide-react";
+import * as React from "react";
 
-import { authClient } from "@/lib/auth-client"
-import { Button } from "@/shared/components/shadcn/ui/button"
+import { authClient } from "@/lib/auth-client";
+import { Button } from "@/shared/components/shadcn/ui/button";
 
-import { getDashboardPathForRole, getUserRole } from "./role-routing"
+import { getDashboardPathForRole, getUserRole } from "./role-routing";
 
 export function AuthNavButton() {
-  const navigate = useNavigate()
-  const shouldReduceMotion = useReducedMotion()
-  const session = authClient.useSession()
-  const [menuOpen, setMenuOpen] = React.useState(false)
-  const [mounted, setMounted] = React.useState(false)
-  const menuRef = React.useRef<HTMLDivElement | null>(null)
-  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
+  const session = authClient.useSession();
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 
-  const user = session.data?.user
-  const isAuthenticated = Boolean(user)
-  const isPending = mounted ? session.isPending : true
-  const userRole = user ? getUserRole(user) : null
+  const user = session.data?.user;
+  const isAuthenticated = Boolean(user);
+  const isPending = mounted ? session.isPending : true;
+  const userRole = user ? getUserRole(user) : null;
 
   React.useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (!menuOpen) {
-      return
+      return;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node
+      const target = event.target as Node;
       if (
         menuRef.current?.contains(target) ||
         triggerRef.current?.contains(target)
       ) {
-        return
+        return;
       }
-      setMenuOpen(false)
-    }
+      setMenuOpen(false);
+    };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setMenuOpen(false)
+        setMenuOpen(false);
       }
-    }
+    };
 
-    window.addEventListener("mousedown", handlePointerDown)
-    window.addEventListener("keydown", handleEscape)
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
 
     return () => {
-      window.removeEventListener("mousedown", handlePointerDown)
-      window.removeEventListener("keydown", handleEscape)
-    }
-  }, [menuOpen])
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuOpen]);
 
   async function handleDashboardClick() {
-    setMenuOpen(false)
+    setMenuOpen(false);
     if (!user) {
-      return
+      return;
     }
 
     await navigate({
       to: getDashboardPathForRole(userRole ?? "jobseeker"),
-    })
+    });
   }
 
   async function handleLogout() {
-    setMenuOpen(false)
-    await authClient.signOut()
-    await navigate({ to: "/" })
+    setMenuOpen(false);
+    await authClient.signOut();
+    await navigate({ to: "/" });
   }
 
   function handleAuthClick() {
     if (isAuthenticated) {
-      setMenuOpen((previous) => !previous)
-      return
+      setMenuOpen((previous) => !previous);
+      return;
     }
 
-    void navigate({ to: "/login" })
+    void navigate({ to: "/login" });
   }
 
   return (
     <div className="relative flex flex-col items-end gap-1">
       <Button
-        className="rounded-full border-[#cdb8a3] bg-[#fdf7ef] px-4 text-[#4a3223] shadow-[0_12px_30px_-24px_rgba(75,48,29,0.55)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#f6ebde]"
+        className="w-full py-6 md:py-4 rounded-3xl md:rounded-full border-[#cdb8a3] bg-[#fdf7ef] px-4 text-[#4a3223] shadow-[0_12px_30px_-24px_rgba(75,48,29,0.55)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#f6ebde]"
         disabled={isPending}
         onClick={handleAuthClick}
         ref={triggerRef}
@@ -156,25 +156,25 @@ export function AuthNavButton() {
         ) : null}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
 export function RoleRedirectGate() {
-  const navigate = useNavigate()
-  const session = authClient.useSession()
+  const navigate = useNavigate();
+  const session = authClient.useSession();
 
   React.useEffect(() => {
     if (!session.data?.user) {
-      return
+      return;
     }
 
     void navigate({
       replace: true,
       to: getDashboardPathForRole(getUserRole(session.data.user)),
-    })
-  }, [navigate, session.data?.user])
+    });
+  }, [navigate, session.data?.user]);
 
-  return null
+  return null;
 }
 
-export { RoleAccessGuard } from "@/features/dashboard/components/RoleGuard"
+export { RoleAccessGuard } from "@/features/dashboard/components/RoleGuard";
