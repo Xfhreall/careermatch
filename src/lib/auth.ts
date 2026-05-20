@@ -90,15 +90,35 @@ function getDatabasePool(): Pool | undefined {
     return undefined
   }
 
-  if (!pool || poolKey !== databaseUrl) {
-    const isHyperdrive = Boolean(getRuntimeHyperdrive())
+  const isHyperdrive = Boolean(getRuntimeHyperdrive())
 
+  if (isHyperdrive) {
+    // Cloudflare Workers: isolates freeze → pg.Pool TCP connections go stale.
+    // Recreate the pool on every request.  Hyperdrive maintains warm edge
+    // connections, so connect() overhead is < 1 ms.
+    if (pool) {
+      pool.end().catch(() => {})
+    }
     pool = new Pool({
       connectionString: databaseUrl,
-      max: isHyperdrive ? 1 : 2,
+      max: 1,
+      idleTimeoutMillis: 5_000,
+      connectionTimeoutMillis: 5_000,
+    })
+    pool.on("error", (err) => {
+      console.error("[DB Pool] Unexpected error:", err.message)
+    })
+    poolKey = databaseUrl
+    return pool
+  }
+
+  if (!pool || poolKey !== databaseUrl) {
+    pool = new Pool({
+      connectionString: databaseUrl,
+      max: 2,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 8_000,
-      ssl: isHyperdrive ? undefined : { rejectUnauthorized: false },
+      ssl: { rejectUnauthorized: false },
     })
     poolKey = databaseUrl
 
@@ -265,6 +285,15 @@ function getAuthInstance() {
   const database = getDatabasePool()
   const kv = getRuntimeKV()
   const runtimeConfig = resolveAuthRuntimeConfig()
+  const isHyperdrive = Boolean(getRuntimeHyperdrive())
+
+  // With Hyperdrive, the pool is recreated each request (to avoid stale
+  // TCP connections from frozen Worker isolates).  Don't cache the auth
+  // instance — it holds a reference to the now-defunct pool.
+  if (isHyperdrive) {
+    return createAuthInstance(database, kv)
+  }
+
   const cacheKey = JSON.stringify({
     baseURL: runtimeConfig.baseURL,
     databaseUrl: poolKey ?? null,
