@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { Pool } from "pg"
 
+import { hashPassword, verifyPassword } from "@/lib/password"
+
 /** Minimal KVNamespace — avoids depending on @cloudflare/workers-types */
 interface KVNamespace {
   get(
@@ -173,12 +175,19 @@ function createAuthInstance(database?: Pool, kv?: KVNamespace) {
     },
     advanced: {
       useSecureCookies: runtimeConfig.baseURL.startsWith("https://"),
+      ipAddress: {
+        ipAddressHeaders: ["cf-connecting-ip", "x-real-ip"],
+      },
     },
     appName: "CareerMatch",
     baseURL: runtimeConfig.baseURL,
     database,
     emailAndPassword: {
       enabled: true,
+      password: {
+        hash: hashPassword,
+        verify: verifyPassword,
+      },
     },
     plugins: [tanstackStartCookies()],
     secondaryStorage: kv ? createKVStorage(kv) : undefined,
