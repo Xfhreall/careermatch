@@ -1,7 +1,26 @@
 import { betterAuth } from "better-auth"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
-import { Pool } from "pg"
+import { Client } from "pg"
 
+// ---------------------------------------------------------------------------
+// Minimal KVNamespace interface (avoids depending on @cloudflare/workers-types)
+// ---------------------------------------------------------------------------
+interface KVNamespace {
+  get(
+    key: string,
+    type?: "text" | "json" | "arrayBuffer" | "stream",
+  ): Promise<unknown>
+  put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<void>
+  delete(key: string): Promise<void>
+}
+
+// ---------------------------------------------------------------------------
+// Runtime env (injected by TanStack Start / Cloudflare Workers adapter)
+// ---------------------------------------------------------------------------
 type RuntimeEnvGlobal = typeof globalThis & {
   __env__?: {
     BETTER_AUTH_SECRET?: string
@@ -13,6 +32,8 @@ type RuntimeEnvGlobal = typeof globalThis & {
       connectionString?: string
     }
     SUPABASE_DB_URL?: string
+    /** Cloudflare KV namespace for Better Auth secondary storage */
+    AUTH_KV?: KVNamespace
   }
 }
 
@@ -20,8 +41,12 @@ function getRuntimeHyperdrive() {
   return (globalThis as RuntimeEnvGlobal).__env__?.HYPERDRIVE
 }
 
+function getRuntimeKV(): KVNamespace | undefined {
+  return (globalThis as RuntimeEnvGlobal).__env__?.AUTH_KV
+}
+
 function getRuntimeEnvValue(
-  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>
+  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>,
 ) {
   const runtimeValue = (globalThis as RuntimeEnvGlobal).__env__?.[key]
 
@@ -32,6 +57,9 @@ function getRuntimeEnvValue(
   return process.env[key]
 }
 
+// ---------------------------------------------------------------------------
+// URL / origin helpers
+// ---------------------------------------------------------------------------
 function resolveBaseURL() {
   return getRuntimeEnvValue("BETTER_AUTH_URL") ?? "http://localhost:3000"
 }
@@ -44,7 +72,7 @@ function resolveTrustedOrigins(baseURL: string) {
       "http://localhost:3001",
       "http://127.0.0.1:3000",
       "http://127.0.0.1:3001",
-    ])
+    ]),
   )
 }
 
@@ -61,37 +89,77 @@ function getDatabaseUrl(): string | undefined {
   )
 }
 
-let pool: Pool | undefined
-let poolKey: string | undefined
+// ---------------------------------------------------------------------------
+// Database adapter — per-query Client via Hyperdrive (NO pg.Pool)
+// ---------------------------------------------------------------------------
+// pg.Pool is broken in Cloudflare Workers — TCP connections go stale when
+// isolates freeze.  Instead we create a fresh Client per query.  Hyperdrive
+// maintains warm connections at the edge, so connect() overhead is < 1 ms.
+// ---------------------------------------------------------------------------
 
-function getDatabasePool(): Pool | undefined {
-  const databaseUrl = getDatabaseUrl()
+interface DatabaseAdapter {
+  query(text: string, params?: unknown[]): Promise<{
+    rows: unknown[]
+    rowCount: number
+  }>
+}
 
-  if (!databaseUrl || databaseUrl.trim().length === 0) {
+let dbAdapter: DatabaseAdapter | undefined
+let dbAdapterKey: string | undefined
+
+function getDatabaseAdapter(): DatabaseAdapter | undefined {
+  const connectionString = getDatabaseUrl()
+
+  if (!connectionString || connectionString.trim().length === 0) {
     return undefined
   }
 
-  if (!pool || poolKey !== databaseUrl) {
-    const isHyperdrive = Boolean(getRuntimeHyperdrive())
-
-    pool = new Pool({
-      connectionString: databaseUrl,
-      max: isHyperdrive ? 1 : 2,
-      idleTimeoutMillis: 10_000,
-      connectionTimeoutMillis: 8_000,
-      // Hyperdrive handles SSL internally; only set SSL for direct connections
-      ssl: isHyperdrive ? undefined : { rejectUnauthorized: false },
-    })
-    poolKey = databaseUrl
-
-    pool.on("error", (err) => {
-      console.error("[DB Pool] Unexpected error:", err.message)
-    })
+  if (!dbAdapter || dbAdapterKey !== connectionString) {
+    dbAdapter = {
+      query: async (text: string, params?: unknown[]) => {
+        const client = new Client({ connectionString })
+        try {
+          await client.connect()
+          return await client.query(text, params)
+        } finally {
+          // Fire-and-forget cleanup — Hyperdrive manages the real pool
+          client.end().catch(() => {})
+        }
+      },
+    }
+    dbAdapterKey = connectionString
   }
 
-  return pool
+  return dbAdapter
 }
 
+// ---------------------------------------------------------------------------
+// KV → Better Auth secondary storage adapter
+// ---------------------------------------------------------------------------
+// When secondaryStorage is set, Better Auth stores sessions, rate-limit data,
+// and verification tokens in KV instead of Postgres.  This eliminates DB writes
+// on every sign-in, reducing CPU time.
+// ---------------------------------------------------------------------------
+
+function createKVStorage(kv: KVNamespace) {
+  return {
+    get: async (key: string) => {
+      return kv.get(key, "json")
+    },
+    set: async (key: string, value: unknown, ttl?: number) => {
+      await kv.put(key, JSON.stringify(value), {
+        expirationTtl: ttl,
+      })
+    },
+    delete: async (key: string) => {
+      await kv.delete(key)
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Runtime config
+// ---------------------------------------------------------------------------
 type AuthRuntimeConfig = {
   baseURL: string
   googleClientId: string
@@ -112,7 +180,13 @@ function resolveAuthRuntimeConfig(): AuthRuntimeConfig {
   }
 }
 
-function createAuthInstance(database?: Pool) {
+// ---------------------------------------------------------------------------
+// Auth instance factory
+// ---------------------------------------------------------------------------
+function createAuthInstance(
+  database: DatabaseAdapter | undefined,
+  kv: KVNamespace | undefined,
+) {
   const hasDatabase = Boolean(database)
   const runtimeConfig = resolveAuthRuntimeConfig()
 
@@ -149,12 +223,16 @@ function createAuthInstance(database?: Pool) {
       enabled: true,
     },
     plugins: [tanstackStartCookies()],
+    secondaryStorage: kv ? createKVStorage(kv) : undefined,
     secret: runtimeConfig.secret,
     session: {
       cookieCache: {
         enabled: true,
         maxAge: 60 * 60 * 24 * 7,
-        strategy: "jwe",
+        // "compact" uses Base64 + HMAC — far less CPU than "jwe" encryption.
+        // "jwe" encrypts the entire session payload which is expensive in
+        // Cloudflare Workers (pure-JS crypto, no native bindings).
+        strategy: "compact",
       },
       fields: {
         createdAt: "created_at",
@@ -165,7 +243,9 @@ function createAuthInstance(database?: Pool) {
         userId: "user_id",
       },
       modelName: "sessions",
-      storeSessionInDatabase: hasDatabase,
+      // When KV secondary storage is available, sessions live in KV.
+      // Only store in Postgres when there's no KV fallback.
+      storeSessionInDatabase: hasDatabase && !kv,
     },
     socialProviders: {
       google: {
@@ -216,23 +296,28 @@ function createAuthInstance(database?: Pool) {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Cached auth instance (re-created when config changes)
+// ---------------------------------------------------------------------------
 type AuthInstance = ReturnType<typeof createAuthInstance>
 let authCache: { auth: AuthInstance; key: string } | undefined
 
 function getAuthInstance() {
-  const database = getDatabasePool()
+  const database = getDatabaseAdapter()
+  const kv = getRuntimeKV()
   const runtimeConfig = resolveAuthRuntimeConfig()
   const cacheKey = JSON.stringify({
     baseURL: runtimeConfig.baseURL,
-    databaseUrl: poolKey ?? null,
+    databaseUrl: dbAdapterKey ?? null,
     googleClientId: runtimeConfig.googleClientId,
     hasDatabase: Boolean(database),
+    hasKV: Boolean(kv),
     secret: Boolean(runtimeConfig.secret),
   })
 
   if (!authCache || authCache.key !== cacheKey) {
     authCache = {
-      auth: createAuthInstance(database),
+      auth: createAuthInstance(database, kv),
       key: cacheKey,
     }
   }
@@ -240,8 +325,11 @@ function getAuthInstance() {
   return authCache.auth
 }
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 export async function withAuth<T>(
-  callback: (auth: AuthInstance) => Promise<T>
+  callback: (auth: AuthInstance) => Promise<T>,
 ): Promise<T> {
   const auth = getAuthInstance()
   return callback(auth)

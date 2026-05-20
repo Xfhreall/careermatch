@@ -13,6 +13,10 @@ directory = ".output/public"
 type = "ESModule"
 globs = ["**/*.mjs", "**/*.js"]
 
+[[kv_namespaces]]
+binding = "CAREERMATCH_KV"
+id = "68e2a0205f9e4282a5f94c5d325f60db"
+
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "84327efcc1894753b541d5d79eba2953"
