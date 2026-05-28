@@ -3,6 +3,12 @@ import type {
   NormalizedAnalysisResponse,
 } from "@/features/cv-analysis/types"
 import type {
+  JobseekerChatbotConversation,
+  JobseekerChatbotConversationSummary,
+  JobseekerChatbotMode,
+  JobseekerChatbotRole,
+} from "@/features/jobseeker-chatbot/types"
+import type {
   AnonymousCandidateRecord,
   HrdJobRecord,
   SuperadminSnapshot,
@@ -160,6 +166,128 @@ export async function deleteAnalysisResult(userId: string, analysisId: string) {
   if (error) {
     throw new Error(error.message)
   }
+}
+
+export async function listChatbotConversations(
+  userId: string
+): Promise<JobseekerChatbotConversationSummary[]> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("chatbot_conversations")
+    .select("id, title, mode, analysis_id, created_at, updated_at")
+    .eq("jobseeker_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(30)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data ?? []).map((row) =>
+    toChatbotConversationSummary(row as Record<string, unknown>)
+  )
+}
+
+export async function loadChatbotConversation(
+  userId: string,
+  conversationId: string
+): Promise<JobseekerChatbotConversation | null> {
+  const supabase = getSupabaseAdmin()
+  const { data: conversation, error } = await supabase
+    .from("chatbot_conversations")
+    .select("id, title, mode, analysis_id, created_at, updated_at")
+    .eq("jobseeker_id", userId)
+    .eq("id", conversationId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!conversation) {
+    return null
+  }
+
+  const { data: messages, error: messagesError } = await supabase
+    .from("chatbot_messages")
+    .select("id, role, content, created_at")
+    .eq("jobseeker_id", userId)
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(80)
+
+  if (messagesError) {
+    throw new Error(messagesError.message)
+  }
+
+  return {
+    ...toChatbotConversationSummary(conversation as Record<string, unknown>),
+    messages: (messages ?? []).map((row) =>
+      toChatbotMessage(row as Record<string, unknown>)
+    ),
+  }
+}
+
+export async function createChatbotConversation(input: {
+  analysisId?: string
+  message: string
+  mode: JobseekerChatbotMode
+  userId: string
+}) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("chatbot_conversations")
+    .insert({
+      analysis_id: input.analysisId ?? null,
+      jobseeker_id: input.userId,
+      mode: input.mode,
+      title: createChatbotTitle(input.message),
+    })
+    .select("id, title, mode, analysis_id, created_at, updated_at")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return toChatbotConversationSummary(data as Record<string, unknown>)
+}
+
+export async function appendChatbotMessage(input: {
+  content: string
+  conversationId: string
+  metadata?: Record<string, unknown>
+  role: JobseekerChatbotRole
+  userId: string
+}) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("chatbot_messages")
+    .insert({
+      content: input.content,
+      conversation_id: input.conversationId,
+      jobseeker_id: input.userId,
+      metadata: input.metadata ?? {},
+      role: input.role,
+    })
+    .select("id, role, content, created_at")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const { error: updateError } = await supabase
+    .from("chatbot_conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", input.conversationId)
+    .eq("jobseeker_id", input.userId)
+
+  if (updateError) {
+    throw new Error(updateError.message)
+  }
+
+  return toChatbotMessage(data as Record<string, unknown>)
 }
 
 export async function getHrdDashboard(user: SessionUser, role: AccessRole) {
@@ -696,6 +824,44 @@ function toHistoryItem(row: Record<string, unknown>): AnalysisHistoryItem {
       ? Number(topMatch.compatibilityScore ?? topMatch.compatibility_score ?? 0)
       : undefined,
   }
+}
+
+function toChatbotConversationSummary(
+  row: Record<string, unknown>
+): JobseekerChatbotConversationSummary {
+  const mode = row.mode === "analysis" ? "analysis" : "direct"
+  const analysisId =
+    typeof row.analysis_id === "string" ? row.analysis_id : undefined
+
+  return {
+    analysisId,
+    createdAt: String(row.created_at),
+    id: String(row.id),
+    mode,
+    title: String(row.title || "Chat baru"),
+    updatedAt: String(row.updated_at),
+  }
+}
+
+function toChatbotMessage(
+  row: Record<string, unknown>
+): JobseekerChatbotConversation["messages"][number] {
+  return {
+    content: String(row.content ?? ""),
+    createdAt: String(row.created_at),
+    id: String(row.id),
+    role: row.role === "user" ? "user" : "assistant",
+  }
+}
+
+function createChatbotTitle(message: string) {
+  const normalized = message.replace(/\s+/g, " ").trim()
+
+  if (!normalized) {
+    return "Chat baru"
+  }
+
+  return normalized.length > 56 ? `${normalized.slice(0, 53)}...` : normalized
 }
 
 function toApprovalStatus(value: string) {

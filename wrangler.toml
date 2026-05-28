@@ -37,7 +37,8 @@ persist = true
 head_sampling_rate = 1
 
 [vars]
-N8N_WEBHOOK_URL = "https://syahrul1234.app.n8n.cloud/webhook/ai-job-matching"
+N8N_WEBHOOK_URL = "https://syahrul123.app.n8n.cloud/webhook/ai-job-matching"
+CHATBOT_URL = "https://syahrul123.app.n8n.cloud/webhook/interview-chat-trigger-001/chat"
 BETTER_AUTH_URL = "https://careermatch-capstone.xfhreall.workers.dev"
 BETTER_AUTH_SECRET = "this-fucking-secret-auth-password-pass-ahahaha"
 GOOGLE_CLIENT_ID = "827234044893-okhdspe4l36sgrshgs3i6l4ckvh0fbln.apps.googleusercontent.com"

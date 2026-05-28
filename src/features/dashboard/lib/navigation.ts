@@ -4,6 +4,7 @@ import {
   FileSearchIcon,
   HistoryIcon,
   LayoutDashboardIcon,
+  MessageSquareTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
   UserIcon,
@@ -25,6 +26,11 @@ const jobseekerItems: SidebarItem[] = [
   },
   { label: "Analisis CV", href: "/jobseeker/analyze", icon: FileSearchIcon },
   { label: "Riwayat", href: "/jobseeker/history", icon: HistoryIcon },
+  {
+    label: "Chatbot",
+    href: "/jobseeker/chatbot",
+    icon: MessageSquareTextIcon,
+  },
   { label: "Profile", href: "/jobseeker/profile", icon: UserIcon },
 ]
 

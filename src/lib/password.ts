@@ -21,8 +21,8 @@ const SALT_LENGTH = 16
 // Helpers
 // ---------------------------------------------------------------------------
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
+function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   let binary = ""
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i])
@@ -48,13 +48,19 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0
 }
 
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return buffer
+}
+
 // ---------------------------------------------------------------------------
 // PBKDF2 (Web Crypto — fast in Workers)
 // ---------------------------------------------------------------------------
 
 async function deriveKey(
   password: string,
-  salt: Uint8Array,
+  salt: Uint8Array
 ): Promise<Uint8Array> {
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
@@ -62,17 +68,17 @@ async function deriveKey(
     encoder.encode(password),
     "PBKDF2",
     false,
-    ["deriveBits"],
+    ["deriveBits"]
   )
   const derived = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt,
+      salt: bytesToArrayBuffer(salt),
       iterations: PBKDF2_ITERATIONS,
       hash: PBKDF2_HASH,
     },
     key,
-    PBKDF2_KEY_LEN_BITS,
+    PBKDF2_KEY_LEN_BITS
   )
   return new Uint8Array(derived)
 }
