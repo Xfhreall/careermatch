@@ -35,8 +35,15 @@ export const Route = createFileRoute("/api/cv/analyze")({
         }
 
         const incomingForm = await request.formData()
-        const cvValue = incomingForm.get("cv")
+        const cvValue = incomingForm.get("cv") ?? incomingForm.get("cv_file")
         const filename = incomingForm.get("filename")
+        const incomingSessionId = stringFromFormValue(
+          incomingForm.get("session_id")
+        )
+        const jobTitle = stringFromFormValue(incomingForm.get("job_title"))
+        const jobDescription = stringFromFormValue(
+          incomingForm.get("job_description")
+        )
 
         if (!(cvValue instanceof File)) {
           return Response.json(
@@ -49,6 +56,15 @@ export const Route = createFileRoute("/api/cv/analyze")({
 
         if (!validation.ok) {
           return Response.json({ error: validation.message }, { status: 400 })
+        }
+
+        if (!jobTitle || !jobDescription) {
+          return Response.json(
+            {
+              error: "Posisi yang dilamar dan deskripsi pekerjaan wajib diisi.",
+            },
+            { status: 400 }
+          )
         }
 
         let analysisJobId: string | undefined
@@ -69,9 +85,16 @@ export const Route = createFileRoute("/api/cv/analyze")({
 
         const outgoingForm = new FormData()
         outgoingForm.append("cv", cvValue, cvValue.name)
+        outgoingForm.append("cv_file", cvValue, cvValue.name)
         outgoingForm.append(
           "filename",
           typeof filename === "string" ? filename : cvValue.name
+        )
+        outgoingForm.append("job_title", jobTitle)
+        outgoingForm.append("job_description", jobDescription)
+        outgoingForm.append(
+          "session_id",
+          incomingSessionId ?? analysisJobId ?? crypto.randomUUID()
         )
 
         let webhookResponse: Response
@@ -115,7 +138,12 @@ export const Route = createFileRoute("/api/cv/analyze")({
           )
         }
 
-        const result = normalizeAnalysisResponse(payload)
+        const result = normalizeAnalysisResponse(payload, {
+          appliedJob: {
+            jobDescription,
+            jobTitle,
+          },
+        })
 
         try {
           await saveAnalysisResult({
@@ -152,4 +180,10 @@ async function markAnalysisFailed(jobId: string, error: unknown) {
     "failed",
     error instanceof Error ? error.message : String(error)
   )
+}
+
+function stringFromFormValue(value: FormDataEntryValue | null) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined
 }

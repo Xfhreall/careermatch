@@ -1,4 +1,5 @@
 import type {
+  AppliedJob,
   CandidateProfile,
   JobMatch,
   NormalizedAnalysisResponse,
@@ -24,14 +25,21 @@ const COACHING_KEYS = [
 
 const TEXT_KEYS = ["text", "content", "message", "response", "output", "result"]
 
+type NormalizeAnalysisOptions = {
+  appliedJob?: AppliedJob
+}
+
 export function normalizeAnalysisResponse(
-  input: unknown
+  input: unknown,
+  options: NormalizeAnalysisOptions = {}
 ): NormalizedAnalysisResponse {
   const parsedInput = parseMaybeJson(input)
 
   if (isNormalizedRecord(parsedInput)) {
     return {
       analysisId: parsedInput.analysisId,
+      appliedJob:
+        normalizeAppliedJob(parsedInput.appliedJob) ?? options.appliedJob,
       candidateProfile: normalizeExistingCandidateProfile(
         parsedInput.candidateProfile
       ),
@@ -44,11 +52,14 @@ export function normalizeAnalysisResponse(
   const root = isRecord(parsedInput) ? parsedInput : undefined
   const analysisId =
     firstString(root, ["analysis_id", "analysisId", "id"]) ?? createAnalysisId()
+  const appliedJob =
+    options.appliedJob ?? normalizeAppliedJobFromRoot(root ?? {})
 
   return {
     analysisId,
+    appliedJob,
     candidateProfile: normalizeCandidateProfile(root),
-    jobMatches: findFirstJobArray(parsedInput).map(normalizeJobMatch),
+    jobMatches: findFirstJobMatches(parsedInput).map(normalizeJobMatch),
     careerCoaching: normalizeCareerCoaching(parsedInput),
     rawResponse: input,
   }
@@ -80,6 +91,81 @@ function normalizeExistingCandidateProfile(
     skills: stringArrayFrom(value.skills),
     summary: stringFrom(value.summary),
     totalExperienceYears: numberFrom(value.totalExperienceYears),
+  }
+}
+
+function normalizeAppliedJob(value: unknown): AppliedJob | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const jobTitle = stringFrom(
+    firstValue(value, ["jobTitle", "job_title", "position", "role", "title"])
+  )
+  const jobDescription = stringFrom(
+    firstValue(value, [
+      "jobDescription",
+      "job_description",
+      "description",
+      "jobDesc",
+    ])
+  )
+
+  if (!jobTitle || !jobDescription) {
+    return undefined
+  }
+
+  return {
+    jobDescription,
+    jobTitle,
+  }
+}
+
+function normalizeAppliedJobFromRoot(
+  root: Record<string, unknown>
+): AppliedJob | undefined {
+  const nestedValue = firstValue(root, [
+    "appliedJob",
+    "applied_job",
+    "targetJob",
+    "target_job",
+    "jobContext",
+    "job_context",
+  ])
+  const nestedJob = normalizeAppliedJob(nestedValue)
+
+  if (nestedJob) {
+    return nestedJob
+  }
+
+  const jobTitle = stringFrom(
+    firstValue(root, [
+      "appliedJobTitle",
+      "applied_job_title",
+      "targetJobTitle",
+      "target_job_title",
+      "positionApplied",
+      "position_applied",
+    ])
+  )
+  const jobDescription = stringFrom(
+    firstValue(root, [
+      "appliedJobDescription",
+      "applied_job_description",
+      "targetJobDescription",
+      "target_job_description",
+      "jobDescription",
+      "job_description",
+    ])
+  )
+
+  if (!jobTitle || !jobDescription) {
+    return undefined
+  }
+
+  return {
+    jobDescription,
+    jobTitle,
   }
 }
 
@@ -185,7 +271,7 @@ function normalizeJobMatch(value: unknown): JobMatch {
   }
 }
 
-function findFirstJobArray(value: unknown, depth = 0): unknown[] {
+function findFirstJobMatches(value: unknown, depth = 0): unknown[] {
   if (depth > 5) {
     return []
   }
@@ -200,9 +286,15 @@ function findFirstJobArray(value: unknown, depth = 0): unknown[] {
     return []
   }
 
+  const topMatch = firstValue(parsedValue, ["top_match", "topMatch"])
+
+  if (isJobLike(topMatch)) {
+    return [topMatch]
+  }
+
   for (const key of JOB_MATCH_KEYS) {
     if (key in parsedValue) {
-      const candidate = findFirstJobArray(parsedValue[key], depth + 1)
+      const candidate = findFirstJobMatches(parsedValue[key], depth + 1)
 
       if (candidate.length > 0) {
         return candidate
@@ -211,7 +303,7 @@ function findFirstJobArray(value: unknown, depth = 0): unknown[] {
   }
 
   for (const child of Object.values(parsedValue)) {
-    const candidate = findFirstJobArray(child, depth + 1)
+    const candidate = findFirstJobMatches(child, depth + 1)
 
     if (candidate.length > 0) {
       return candidate

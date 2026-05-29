@@ -5,6 +5,11 @@ export type CandidateProfile = {
   raw?: unknown
 }
 
+export type AppliedJob = {
+  jobDescription: string
+  jobTitle: string
+}
+
 export type JobMatch = {
   jobId?: string
   jobTitle: string
@@ -22,6 +27,7 @@ export type JobMatch = {
 
 export type NormalizedAnalysisResponse = {
   analysisId: string
+  appliedJob?: AppliedJob
   candidateProfile?: CandidateProfile
   jobMatches: JobMatch[]
   careerCoaching: string

@@ -1,4 +1,5 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { Link } from "@tanstack/react-router"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   ArrowLeftIcon,
   BrainCircuitIcon,
@@ -9,22 +10,23 @@ import {
   GaugeIcon,
   LightbulbIcon,
   ListChecksIcon,
+  MessageSquarePlusIcon,
   RotateCcwIcon,
   SparklesIcon,
   TargetIcon,
   UserRoundIcon,
-} from "lucide-react";
-import type * as React from "react";
+} from "lucide-react"
+import type * as React from "react"
 
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/shared/components/shadcn/ui/accordion";
-import { Alert, AlertDescription } from "@/shared/components/shadcn/ui/alert";
-import { Badge } from "@/shared/components/shadcn/ui/badge";
-import { Button } from "@/shared/components/shadcn/ui/button";
+} from "@/shared/components/shadcn/ui/accordion"
+import { Alert, AlertDescription } from "@/shared/components/shadcn/ui/alert"
+import { Badge } from "@/shared/components/shadcn/ui/badge"
+import { Button, buttonVariants } from "@/shared/components/shadcn/ui/button"
 import {
   Card,
   CardContent,
@@ -32,24 +34,24 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/shared/components/shadcn/ui/card";
-import { Progress } from "@/shared/components/shadcn/ui/progress";
+} from "@/shared/components/shadcn/ui/card"
+import { Progress } from "@/shared/components/shadcn/ui/progress"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/shared/components/shadcn/ui/tabs";
+} from "@/shared/components/shadcn/ui/tabs"
 
-import { trackCareerMatchEvent } from "../analytics";
-import type { JobMatch, NormalizedAnalysisResponse } from "../types";
-import { JobMatchesTable } from "./JobMatchesTable";
-import { SafeMarkdown } from "./SafeMarkdown";
+import { trackCareerMatchEvent } from "../analytics"
+import type { JobMatch, NormalizedAnalysisResponse } from "../types"
+import { JobMatchesTable } from "./JobMatchesTable"
+import { SafeMarkdown } from "./SafeMarkdown"
 
 type AnalysisResultViewProps = {
-  result: NormalizedAnalysisResponse;
-  onReset: () => void;
-};
+  result: NormalizedAnalysisResponse
+  onReset: () => void
+}
 
 const CAREER_ANALYSIS_KEYS = [
   "career_analysis",
@@ -61,7 +63,7 @@ const CAREER_ANALYSIS_KEYS = [
   "candidateAnalysis",
   "recommendation_analysis",
   "recommendationAnalysis",
-] as const;
+] as const
 
 const CHATBOT_RESPONSE_KEYS = [
   "chatbot_response",
@@ -74,34 +76,34 @@ const CHATBOT_RESPONSE_KEYS = [
   "llmResponse",
   "response",
   "message",
-] as const;
+] as const
 
 export function AnalysisResultView({
   result,
   onReset,
 }: AnalysisResultViewProps) {
-  const shouldReduceMotion = useReducedMotion();
-  const parsedResponse = parseMaybeJson(result.rawResponse);
+  const shouldReduceMotion = useReducedMotion()
+  const parsedResponse = parseMaybeJson(result.rawResponse)
   const careerAnalysis = findFirstReadableByKeys(
     parsedResponse,
-    CAREER_ANALYSIS_KEYS,
-  );
+    CAREER_ANALYSIS_KEYS
+  )
   const chatbotResponse = findFirstReadableByKeys(
     parsedResponse,
-    CHATBOT_RESPONSE_KEYS,
-  );
-  const topMatch = result.jobMatches[0];
-  const candidateSkills = result.candidateProfile?.skills ?? [];
+    CHATBOT_RESPONSE_KEYS
+  )
+  const topMatch = result.jobMatches[0]
+  const candidateSkills = result.candidateProfile?.skills ?? []
   const fallbackReport =
-    typeof parsedResponse === "string" ? parsedResponse : "";
+    typeof parsedResponse === "string" ? parsedResponse : ""
   const chatbotValue = getDistinctReadableValue(
     chatbotResponse,
-    result.careerCoaching,
-  );
+    result.careerCoaching
+  )
   const transition = {
     duration: shouldReduceMotion ? 0 : 0.34,
     ease: [0.16, 1, 0.3, 1],
-  } as const;
+  } as const
   const overviewMetrics = [
     {
       icon: BriefcaseBusinessIcon,
@@ -121,29 +123,29 @@ export function AnalysisResultView({
       value: String(candidateSkills.length),
       helper: "Dari profil kandidat",
     },
-  ];
+  ]
 
   function handleReset() {
     trackCareerMatchEvent("analysis_reset", {
       analysis_id: result.analysisId,
       previous_job_match_count: result.jobMatches.length,
-    });
-    onReset();
+    })
+    onReset()
   }
 
   function handleTabOpened(tab: string) {
     trackCareerMatchEvent("tab_opened", {
       analysis_id: result.analysisId,
       tab,
-    });
+    })
   }
 
   function handlePrintReport() {
     trackCareerMatchEvent("report_exported", {
       analysis_id: result.analysisId,
       export_type: "browser_pdf",
-    });
-    window.print();
+    })
+    window.print()
   }
 
   return (
@@ -154,7 +156,7 @@ export function AnalysisResultView({
       transition={transition}
     >
       <Card className="border-border border-b pb-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end p-4">
+        <div className="grid gap-6 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="flex max-w-4xl flex-col gap-4">
             <Badge className="w-fit bg-card" variant="outline">
               Analysis ID: {result.analysisId}
@@ -170,6 +172,21 @@ export function AnalysisResultView({
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+            <Link
+              className={buttonVariants()}
+              search={{
+                analysisId: result.analysisId,
+                mode: "analysis",
+                prompt: buildInterviewPrompt(result),
+              }}
+              to="/jobseeker/chatbot"
+            >
+              <MessageSquarePlusIcon
+                aria-hidden="true"
+                data-icon="inline-start"
+              />
+              Mulai Mock Interview
+            </Link>
             <Button onClick={handlePrintReport} variant="outline">
               <DownloadIcon aria-hidden="true" data-icon="inline-start" />
               Simpan PDF
@@ -205,7 +222,7 @@ export function AnalysisResultView({
       </section>
 
       <Tabs defaultValue="overview" onValueChange={handleTabOpened}>
-        <TabsList className="w-full justify-start sm:w-fit h-full py-1.5">
+        <TabsList className="h-full w-full justify-start py-1.5 sm:w-fit">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="jobs">Job Matches</TabsTrigger>
           <TabsTrigger value="career">Career Analysis</TabsTrigger>
@@ -267,7 +284,7 @@ export function AnalysisResultView({
         Kembali ke upload
       </Button>
     </motion.div>
-  );
+  )
 }
 
 function AnimatedTabsContent({
@@ -276,13 +293,13 @@ function AnimatedTabsContent({
   transition,
   value,
 }: {
-  children: React.ReactNode;
-  shouldReduceMotion: boolean | null;
+  children: React.ReactNode
+  shouldReduceMotion: boolean | null
   transition: {
-    duration: number;
-    ease: readonly [number, number, number, number];
-  };
-  value: string;
+    duration: number
+    ease: readonly [number, number, number, number]
+  }
+  value: string
 }) {
   return (
     <TabsContent value={value}>
@@ -295,7 +312,7 @@ function AnimatedTabsContent({
         {children}
       </motion.div>
     </TabsContent>
-  );
+  )
 }
 
 function MetricCard({
@@ -304,10 +321,10 @@ function MetricCard({
   label,
   value,
 }: {
-  helper: string;
-  icon: React.ComponentType<{ "aria-hidden": true; className?: string }>;
-  label: string;
-  value: string;
+  helper: string
+  icon: React.ComponentType<{ "aria-hidden": true; className?: string }>
+  label: string
+  value: string
 }) {
   return (
     <Card>
@@ -320,15 +337,15 @@ function MetricCard({
         <p className="mt-2 text-muted-foreground text-sm">{helper}</p>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function CandidateProfileCard({
   result,
   skills,
 }: {
-  result: NormalizedAnalysisResponse;
-  skills: string[];
+  result: NormalizedAnalysisResponse
+  skills: string[]
 }) {
   return (
     <Card>
@@ -366,7 +383,7 @@ function CandidateProfileCard({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function TopMatchCard({ job }: { job: JobMatch }) {
@@ -399,11 +416,11 @@ function TopMatchCard({ job }: { job: JobMatch }) {
         </CardFooter>
       ) : null}
     </Card>
-  );
+  )
 }
 
 function ScorePanel({ label, value }: { label: string; value?: number }) {
-  const normalizedValue = value ?? 0;
+  const normalizedValue = value ?? 0
 
   return (
     <div className="rounded-lg border border-border bg-background p-4">
@@ -417,7 +434,7 @@ function ScorePanel({ label, value }: { label: string; value?: number }) {
       <p className="mt-3 font-medium text-2xl">{formatScore(value)}</p>
       <Progress className="mt-4" value={normalizedValue} />
     </div>
-  );
+  )
 }
 
 function OverviewReport({ result }: { result: NormalizedAnalysisResponse }) {
@@ -429,6 +446,20 @@ function OverviewReport({ result }: { result: NormalizedAnalysisResponse }) {
           <CardTitle className="text-xl">Ringkasan hasil</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {result.appliedJob ? (
+            <>
+              <SummaryRow
+                icon={BriefcaseBusinessIcon}
+                label="Posisi dilamar"
+                value={result.appliedJob.jobTitle}
+              />
+              <SummaryRow
+                icon={FileTextIcon}
+                label="Deskripsi pekerjaan"
+                value={truncateText(result.appliedJob.jobDescription, 180)}
+              />
+            </>
+          ) : null}
           <SummaryRow
             icon={TargetIcon}
             label="Top role"
@@ -474,7 +505,7 @@ function OverviewReport({ result }: { result: NormalizedAnalysisResponse }) {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 function SummaryRow({
@@ -482,9 +513,9 @@ function SummaryRow({
   label,
   value,
 }: {
-  icon: React.ComponentType<{ "aria-hidden": true; className?: string }>;
-  label: string;
-  value: string;
+  icon: React.ComponentType<{ "aria-hidden": true; className?: string }>
+  label: string
+  value: string
 }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border bg-background p-3">
@@ -499,7 +530,7 @@ function SummaryRow({
         <p className="mt-1 break-words text-sm">{value}</p>
       </div>
     </div>
-  );
+  )
 }
 
 function JobMatchesReport({ jobs }: { jobs: JobMatch[] }) {
@@ -512,7 +543,7 @@ function JobMatchesReport({ jobs }: { jobs: JobMatch[] }) {
           report.
         </AlertDescription>
       </Alert>
-    );
+    )
   }
 
   return (
@@ -571,7 +602,7 @@ function JobMatchesReport({ jobs }: { jobs: JobMatch[] }) {
         ))}
       </Accordion>
     </>
-  );
+  )
 }
 
 function CareerAnalysisReport({
@@ -579,9 +610,9 @@ function CareerAnalysisReport({
   fallbackReport,
   result,
 }: {
-  careerAnalysis: unknown;
-  fallbackReport: string;
-  result: NormalizedAnalysisResponse;
+  careerAnalysis: unknown
+  fallbackReport: string
+  result: NormalizedAnalysisResponse
 }) {
   return (
     <>
@@ -656,7 +687,7 @@ function CareerAnalysisReport({
         </AccordionItem>
       </Accordion>
     </>
-  );
+  )
 }
 
 function ChatbotResponseReport({
@@ -664,11 +695,11 @@ function ChatbotResponseReport({
   chatbotValue,
   fallbackReport,
 }: {
-  careerCoaching: string;
-  chatbotValue: unknown;
-  fallbackReport: string;
+  careerCoaching: string
+  chatbotValue: unknown
+  fallbackReport: string
 }) {
-  const hasCoaching = careerCoaching.trim().length > 0;
+  const hasCoaching = careerCoaching.trim().length > 0
 
   return (
     <>
@@ -708,17 +739,17 @@ function ChatbotResponseReport({
         </Card>
       ) : null}
     </>
-  );
+  )
 }
 
 function FullReport({
   parsedResponse,
   result,
 }: {
-  parsedResponse: unknown;
-  result: NormalizedAnalysisResponse;
+  parsedResponse: unknown
+  result: NormalizedAnalysisResponse
 }) {
-  const sections = createFullReportSections(parsedResponse);
+  const sections = createFullReportSections(parsedResponse)
 
   return (
     <>
@@ -768,7 +799,7 @@ function FullReport({
         </Alert>
       )}
     </>
-  );
+  )
 }
 
 function ReportMetric({ label, value }: { label: string; value: string }) {
@@ -779,34 +810,34 @@ function ReportMetric({ label, value }: { label: string; value: string }) {
         <p className="mt-2 font-medium text-2xl">{value}</p>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function ReadableContent({ value }: { value: unknown }) {
-  const parsedValue = parseMaybeJson(value);
+  const parsedValue = parseMaybeJson(value)
 
   if (!hasReadableValue(parsedValue)) {
     return (
       <p className="text-muted-foreground text-sm">
         Belum ada konten yang tersedia.
       </p>
-    );
+    )
   }
 
   if (typeof parsedValue === "string") {
-    return <SafeMarkdown value={parsedValue} />;
+    return <SafeMarkdown value={parsedValue} />
   }
 
   return (
     <div className="flex flex-col gap-4">
       <DisplayValue label="Detail" value={parsedValue} />
     </div>
-  );
+  )
 }
 
 function SkillRow({ label, skills }: { label: string; skills: string[] }) {
   if (skills.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -822,25 +853,25 @@ function SkillRow({ label, skills }: { label: string; skills: string[] }) {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 type ReportSection = {
-  id: string;
-  title: string;
-  value: unknown;
-};
+  id: string
+  title: string
+  value: unknown
+}
 
 type PipelineItem = {
-  label: string;
-  value: unknown;
-};
+  label: string
+  value: unknown
+}
 
 function createFullReportSections(value: unknown): ReportSection[] {
-  const parsedValue = parseMaybeJson(value);
+  const parsedValue = parseMaybeJson(value)
 
   if (!hasReadableValue(parsedValue)) {
-    return [];
+    return []
   }
 
   if (isRecord(parsedValue)) {
@@ -850,7 +881,7 @@ function createFullReportSections(value: unknown): ReportSection[] {
         id: key,
         title: formatLabel(key),
         value: entryValue,
-      }));
+      }))
   }
 
   if (Array.isArray(parsedValue)) {
@@ -858,7 +889,7 @@ function createFullReportSections(value: unknown): ReportSection[] {
       id: `item-${index}`,
       title: `Item ${index + 1}`,
       value: entryValue,
-    }));
+    }))
   }
 
   return [
@@ -867,18 +898,18 @@ function createFullReportSections(value: unknown): ReportSection[] {
       title: "Output Analisis",
       value: parsedValue,
     },
-  ];
+  ]
 }
 
 function DisplayValue({ label, value }: PipelineItem) {
-  const parsedValue = parseMaybeJson(value);
+  const parsedValue = parseMaybeJson(value)
 
   if (!hasReadableValue(parsedValue)) {
-    return null;
+    return null
   }
 
   if (Array.isArray(parsedValue)) {
-    const primitiveValues = parsedValue.filter(isPrimitiveValue);
+    const primitiveValues = parsedValue.filter(isPrimitiveValue)
 
     if (primitiveValues.length === parsedValue.length) {
       return (
@@ -892,7 +923,7 @@ function DisplayValue({ label, value }: PipelineItem) {
             ))}
           </div>
         </div>
-      );
+      )
     }
 
     return (
@@ -919,7 +950,7 @@ function DisplayValue({ label, value }: PipelineItem) {
           </div>
         ))}
       </div>
-    );
+    )
   }
 
   if (isRecord(parsedValue)) {
@@ -934,7 +965,7 @@ function DisplayValue({ label, value }: PipelineItem) {
           />
         ))}
       </div>
-    );
+    )
   }
 
   return (
@@ -942,7 +973,7 @@ function DisplayValue({ label, value }: PipelineItem) {
       <ValueLabel>{label}</ValueLabel>
       <PrimitiveValue value={parsedValue} />
     </div>
-  );
+  )
 }
 
 function ValueLabel({ children }: { children: React.ReactNode }) {
@@ -950,72 +981,90 @@ function ValueLabel({ children }: { children: React.ReactNode }) {
     <p className="text-muted-foreground text-xs uppercase tracking-[0.08em]">
       {children}
     </p>
-  );
+  )
 }
 
 function PrimitiveValue({ value }: { value: unknown }) {
   if (typeof value === "string" && looksLikeMarkdown(value)) {
-    return <SafeMarkdown value={value} />;
+    return <SafeMarkdown value={value} />
   }
 
   return (
     <p className="break-words text-sm leading-6">{formatPrimitive(value)}</p>
-  );
+  )
 }
 
 function formatScore(value: number | undefined) {
   if (value === undefined) {
-    return "-";
+    return "-"
   }
 
-  return `${Math.round(value)}%`;
+  return `${Math.round(value)}%`
+}
+
+function buildInterviewPrompt(result: NormalizedAnalysisResponse) {
+  const topMatch = result.jobMatches[0]
+  const role =
+    result.appliedJob?.jobTitle ?? topMatch?.jobTitle ?? "posisi teratas"
+
+  return `Mulai mock interview untuk ${role} berdasarkan hasil analisis CV ini.`
+}
+
+function truncateText(value: string, maxLength: number) {
+  const normalizedValue = value.replace(/\s+/g, " ").trim()
+
+  if (normalizedValue.length <= maxLength) {
+    return normalizedValue
+  }
+
+  return `${normalizedValue.slice(0, maxLength - 1).trim()}...`
 }
 
 function findFirstReadableByKeys(
   value: unknown,
   keys: readonly string[],
-  depth = 0,
+  depth = 0
 ): unknown {
   if (depth > 6) {
-    return undefined;
+    return undefined
   }
 
-  const parsedValue = parseMaybeJson(value);
+  const parsedValue = parseMaybeJson(value)
 
   if (Array.isArray(parsedValue)) {
     for (const item of parsedValue) {
-      const nestedValue = findFirstReadableByKeys(item, keys, depth + 1);
+      const nestedValue = findFirstReadableByKeys(item, keys, depth + 1)
 
       if (hasReadableValue(nestedValue)) {
-        return nestedValue;
+        return nestedValue
       }
     }
   }
 
   if (!isRecord(parsedValue)) {
-    return undefined;
+    return undefined
   }
 
   for (const key of keys) {
     if (hasReadableValue(parsedValue[key])) {
-      return parsedValue[key];
+      return parsedValue[key]
     }
   }
 
   for (const child of Object.values(parsedValue)) {
-    const nestedValue = findFirstReadableByKeys(child, keys, depth + 1);
+    const nestedValue = findFirstReadableByKeys(child, keys, depth + 1)
 
     if (hasReadableValue(nestedValue)) {
-      return nestedValue;
+      return nestedValue
     }
   }
 
-  return undefined;
+  return undefined
 }
 
 function getDistinctReadableValue(value: unknown, compareTo: string) {
   if (!hasReadableValue(value)) {
-    return undefined;
+    return undefined
   }
 
   if (
@@ -1023,40 +1072,40 @@ function getDistinctReadableValue(value: unknown, compareTo: string) {
     compareTo.trim() &&
     normalizeText(value) === normalizeText(compareTo)
   ) {
-    return undefined;
+    return undefined
   }
 
-  return value;
+  return value
 }
 
 function normalizeText(value: string) {
-  return value.replace(/\s+/g, " ").trim();
+  return value.replace(/\s+/g, " ").trim()
 }
 
 function looksLikeMarkdown(value: string) {
-  return /(^#{1,4}\s|\n#{1,4}\s|^\d+\.\s|^[-*]\s|\n[-*]\s|`|\*\*)/.test(value);
+  return /(^#{1,4}\s|\n#{1,4}\s|^\d+\.\s|^[-*]\s|\n[-*]\s|`|\*\*)/.test(value)
 }
 
 function parseMaybeJson(value: unknown): unknown {
   if (typeof value !== "string") {
-    return value;
+    return value
   }
 
-  const trimmedValue = value.trim();
+  const trimmedValue = value.trim()
 
   if (!trimmedValue.startsWith("{") && !trimmedValue.startsWith("[")) {
-    return value;
+    return value
   }
 
   try {
-    return JSON.parse(trimmedValue);
+    return JSON.parse(trimmedValue)
   } catch {
-    return value;
+    return value
   }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function isPrimitiveValue(value: unknown) {
@@ -1064,29 +1113,29 @@ function isPrimitiveValue(value: unknown) {
     typeof value === "string" ||
     typeof value === "number" ||
     typeof value === "boolean"
-  );
+  )
 }
 
 function hasReadableValue(value: unknown): boolean {
-  const parsedValue = parseMaybeJson(value);
+  const parsedValue = parseMaybeJson(value)
 
   if (parsedValue === null || parsedValue === undefined) {
-    return false;
+    return false
   }
 
   if (typeof parsedValue === "string") {
-    return parsedValue.trim().length > 0;
+    return parsedValue.trim().length > 0
   }
 
   if (Array.isArray(parsedValue)) {
-    return parsedValue.some(hasReadableValue);
+    return parsedValue.some(hasReadableValue)
   }
 
   if (isRecord(parsedValue)) {
-    return Object.values(parsedValue).some(hasReadableValue);
+    return Object.values(parsedValue).some(hasReadableValue)
   }
 
-  return true;
+  return true
 }
 
 function formatLabel(value: string) {
@@ -1095,34 +1144,34 @@ function formatLabel(value: string) {
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function formatPrimitive(value: unknown) {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    const date = new Date(value);
+    const date = new Date(value)
 
     if (!Number.isNaN(date.getTime())) {
       return new Intl.DateTimeFormat("id-ID", {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(date);
+      }).format(date)
     }
   }
 
   if (typeof value === "boolean") {
-    return value ? "Ya" : "Tidak";
+    return value ? "Ya" : "Tidak"
   }
 
   if (typeof value === "number") {
-    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+    return Number.isInteger(value) ? String(value) : value.toFixed(2)
   }
 
-  return String(value);
+  return String(value)
 }
 
 function getJobKey(job: { company: string; jobId?: string; jobTitle: string }) {
-  return job.jobId ?? `${job.company}-${job.jobTitle}`;
+  return job.jobId ?? `${job.company}-${job.jobTitle}`
 }
 
 function getValueKey(value: unknown) {
@@ -1134,20 +1183,20 @@ function getValueKey(value: unknown) {
       value.question ??
       value.company ??
       value.job_title ??
-      value.jobTitle;
+      value.jobTitle
 
     if (isPrimitiveValue(idValue)) {
-      return String(idValue);
+      return String(idValue)
     }
   }
 
   if (isPrimitiveValue(value)) {
-    return String(value);
+    return String(value)
   }
 
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value)
   } catch {
-    return String(value);
+    return String(value)
   }
 }

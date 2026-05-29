@@ -44,6 +44,12 @@ type LocalMessage = JobseekerChatbotMessage & {
   pending?: boolean
 }
 
+type ChatbotContainerProps = {
+  initialAnalysisId?: string
+  initialMode?: JobseekerChatbotMode
+  initialPrompt?: string
+}
+
 const QUICK_PROMPTS = {
   analysis: [
     "Prioritaskan skill gap dari analisis CV ini.",
@@ -59,21 +65,32 @@ const QUICK_PROMPTS = {
 
 const chatQueryKey = ["jobseeker-chatbot-sessions"] as const
 
-export function ChatbotContainer() {
+export function ChatbotContainer({
+  initialAnalysisId,
+  initialMode = "direct",
+  initialPrompt = "",
+}: ChatbotContainerProps = {}) {
   const queryClient = useQueryClient()
   const shouldReduceMotion = useReducedMotion()
   const session = authClient.useSession()
   const userQuery = useUserQuery({ enabled: Boolean(session.data?.user) })
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
-  const [mode, setMode] = React.useState<JobseekerChatbotMode>("direct")
+  const [mode, setMode] = React.useState<JobseekerChatbotMode>(
+    initialAnalysisId ? "analysis" : initialMode
+  )
   const [selectedAnalysisId, setSelectedAnalysisId] = React.useState<
     string | undefined
-  >()
+  >(initialAnalysisId)
   const [activeConversationId, setActiveConversationId] = React.useState<
     string | undefined
   >()
-  const [draft, setDraft] = React.useState("")
+  const [draft, setDraft] = React.useState(initialPrompt)
   const [messages, setMessages] = React.useState<LocalMessage[]>([])
+  const initialSearchRef = React.useRef({
+    analysisId: initialAnalysisId,
+    mode: initialMode,
+    prompt: initialPrompt,
+  })
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const historyQuery = useQuery({
@@ -167,6 +184,29 @@ export function ChatbotContainer() {
   const isConversationLoading = Boolean(
     activeConversationId && sessionsQuery.isFetching && !mutation.isPending
   )
+
+  React.useEffect(() => {
+    const currentSearch = {
+      analysisId: initialAnalysisId,
+      mode: initialMode,
+      prompt: initialPrompt,
+    }
+
+    if (
+      initialSearchRef.current.analysisId === currentSearch.analysisId &&
+      initialSearchRef.current.mode === currentSearch.mode &&
+      initialSearchRef.current.prompt === currentSearch.prompt
+    ) {
+      return
+    }
+
+    initialSearchRef.current = currentSearch
+    setActiveConversationId(undefined)
+    setMessages([])
+    setMode(initialAnalysisId ? "analysis" : initialMode)
+    setSelectedAnalysisId(initialAnalysisId)
+    setDraft(initialPrompt)
+  }, [initialAnalysisId, initialMode, initialPrompt])
 
   React.useEffect(() => {
     if (activeConversation) {

@@ -1,19 +1,52 @@
 import { normalizeAnalysisResponse } from "./normalize"
-import type { AnalysisHistoryItem, NormalizedAnalysisResponse } from "./types"
+import type {
+  AnalysisHistoryItem,
+  AppliedJob,
+  NormalizedAnalysisResponse,
+} from "./types"
 import { validateCvFile } from "./validators"
 
-export async function analyzeCvRequest(
+export type AnalyzeCvInput = AppliedJob & {
   file: File
+}
+
+export function buildAnalyzeCvFormData(
+  input: AnalyzeCvInput,
+  sessionId = Date.now().toString()
+) {
+  const body = new FormData()
+  body.append("cv", input.file)
+  body.append("cv_file", input.file)
+  body.append("filename", input.file.name)
+  body.append("job_title", input.jobTitle.trim())
+  body.append("job_description", input.jobDescription.trim())
+  body.append("session_id", sessionId)
+
+  return body
+}
+
+export async function analyzeCvRequest(
+  input: AnalyzeCvInput
 ): Promise<NormalizedAnalysisResponse> {
-  const validation = validateCvFile(file)
+  const validation = validateCvFile(input.file)
 
   if (!validation.ok) {
     throw new Error(validation.message)
   }
 
-  const body = new FormData()
-  body.append("cv", file)
-  body.append("filename", file.name)
+  const appliedJob = {
+    jobDescription: input.jobDescription.trim(),
+    jobTitle: input.jobTitle.trim(),
+  }
+
+  if (!appliedJob.jobTitle || !appliedJob.jobDescription) {
+    throw new Error("Posisi yang dilamar dan deskripsi pekerjaan wajib diisi.")
+  }
+
+  const body = buildAnalyzeCvFormData({
+    file: input.file,
+    ...appliedJob,
+  })
 
   const response = await fetch("/api/cv/analyze", {
     method: "POST",
@@ -30,7 +63,7 @@ export async function analyzeCvRequest(
     throw new Error(`Gagal terhubung ke server: ${message}`)
   }
 
-  return normalizeAnalysisResponse(payload)
+  return normalizeAnalysisResponse(payload, { appliedJob })
 }
 
 export async function fetchAnalysisHistory(): Promise<AnalysisHistoryItem[]> {

@@ -168,6 +168,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
                 ? toCompactAnalysisContext(analysisContext)
                 : null,
               app: "CareerMatch",
+              chatInput: message,
               guard: {
                 allowedTopics: [
                   "CV",
@@ -178,7 +179,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
                   "CareerMatch platform guidance",
                 ],
                 instruction:
-                  "Jawab hanya dalam konteks CareerMatch untuk jobseeker. Jika pertanyaan keluar dari topik CV, job match, skill gap, karier, atau interview, tolak singkat dan arahkan kembali ke topik CareerMatch. Jangan mengarang data lowongan atau hasil analisis yang tidak tersedia pada konteks.",
+                  "Jawab hanya dalam konteks CareerMatch untuk jobseeker. Jika appliedJob tersedia, gunakan posisi yang dilamar dan deskripsi pekerjaannya sebagai konteks utama. Jika pertanyaan keluar dari topik CV, job match, skill gap, karier, atau interview, tolak singkat dan arahkan kembali ke topik CareerMatch. Jangan mengarang data lowongan atau hasil analisis yang tidak tersedia pada konteks.",
                 relevanceScore: assessment.score,
                 threshold: assessment.threshold,
               },
@@ -186,6 +187,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
               message,
               mode: conversationMode,
               question: message,
+              sessionId: conversation.id,
               user: {
                 id: auth.session.user.id,
                 role: "jobseeker",
@@ -283,6 +285,12 @@ async function readWebhookResponse(response: Response): Promise<unknown> {
 function toCompactAnalysisContext(result: NormalizedAnalysisResponse) {
   return {
     analysisId: result.analysisId,
+    appliedJob: result.appliedJob
+      ? {
+          jobDescription: result.appliedJob.jobDescription.slice(0, 1800),
+          jobTitle: result.appliedJob.jobTitle,
+        }
+      : undefined,
     candidateProfile: {
       skills: result.candidateProfile?.skills?.slice(0, 24) ?? [],
       summary: result.candidateProfile?.summary,
