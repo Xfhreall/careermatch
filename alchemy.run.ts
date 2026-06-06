@@ -1,7 +1,19 @@
 import alchemy from "alchemy"
 import { Assets, Hyperdrive, KVNamespace, Worker } from "alchemy/cloudflare"
+import { CloudflareStateStore } from "alchemy/state"
 
-const app = await alchemy("careermatch-capstone")
+const app = await alchemy("careermatch-capstone", {
+  password: requiredEnv("ALCHEMY_PASSWORD"),
+  ...(process.env.CI || process.env.ALCHEMY_STATE_TOKEN
+    ? {
+        stateStore: (scope) =>
+          new CloudflareStateStore(scope, {
+            scriptName: "careermatch-capstone-alchemy-state",
+            stateToken: alchemy.secret(requiredEnv("ALCHEMY_STATE_TOKEN")),
+          }),
+      }
+    : {}),
+})
 
 function requiredEnv(name: string) {
   const value = process.env[name]

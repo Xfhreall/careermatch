@@ -123,6 +123,8 @@ cp .env.example .env
 | `SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side) |
 | `SUPABASE_DB_PASSWORD` | Password Supabase database |
+| `ALCHEMY_PASSWORD` | Password enkripsi secret Alchemy; wajib dan harus stabil antar deploy |
+| `ALCHEMY_STATE_TOKEN` | Token persistent state store Alchemy di Cloudflare (wajib untuk CI) |
 | `CLOUDFLARE_API_TOKEN` | Token Cloudflare untuk deploy Alchemy |
 | `CLOUDFLARE_ACCOUNT_ID` | Account ID Cloudflare |
 | `CLOUDFLARE_WORKER_NAME` | Nama Worker production (opsional, default `careermatch-capstone`) |
@@ -268,7 +270,7 @@ User melihat hasil (3 tab):
 | `bun run dev:vite` | Jalankan Vite dev server biasa tanpa Alchemy |
 | `bun run build` | Build production |
 | `bun run preview` | Preview production build |
-| `bun run deploy` | Deploy output build ke Cloudflare via Alchemy |
+| `bun run deploy` | Deploy output build ke Cloudflare via Alchemy menggunakan Node runtime |
 | `bun run deploy:build` | Build lalu deploy ke Cloudflare via Alchemy |
 | `bun run test` | Jalankan test (Vitest) |
 | `bun run lint` | Lint dengan Biome |
@@ -293,6 +295,8 @@ Konfigurasi Worker ada di `alchemy.run.ts`:
 Secret deployment tidak disimpan di repo. Untuk CI, set minimal GitHub Secrets berikut:
 
 ```text
+ALCHEMY_PASSWORD
+ALCHEMY_STATE_TOKEN
 CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 N8N_WEBHOOK_URL
@@ -309,6 +313,14 @@ SUPABASE_DB_PASSWORD
 ```
 
 `CLOUDFLARE_WORKER_NAME` opsional jika ingin override nama Worker.
+
+`ALCHEMY_PASSWORD` dan `ALCHEMY_STATE_TOKEN` harus bernilai random panjang dan stabil antar deploy. Contoh generate lokal:
+
+```bash
+openssl rand -hex 32
+```
+
+Simpan hasilnya sebagai GitHub Secret `ALCHEMY_STATE_TOKEN`.
 
 ---
 
