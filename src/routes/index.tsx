@@ -1,11 +1,11 @@
-import { useForm } from "@tanstack/react-form";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useForm } from "@tanstack/react-form"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   motion,
   useReducedMotion,
   useScroll,
   useTransform,
-} from "framer-motion";
+} from "framer-motion"
 import {
   ArrowRightIcon,
   BarChart3Icon,
@@ -21,28 +21,28 @@ import {
   SparklesIcon,
   TargetIcon,
   UsersIcon,
-} from "lucide-react";
-import { useRef } from "react";
-import { toast } from "sonner";
+} from "lucide-react"
+import { useRef } from "react"
+import { toast } from "sonner"
 
-import { RoleRedirectGate } from "@/features/auth/AuthNavButton";
-import { AppNavbar } from "@/features/platform/components/AppNavbar";
+import { RoleRedirectGate } from "@/features/auth/AuthNavButton"
+import { AppNavbar } from "@/features/platform/components/AppNavbar"
 import {
   BriefcaseBusinessIcon,
   roleDashboardSummaries,
-} from "@/features/platform/data";
-import { Badge } from "@/shared/components/shadcn/ui/badge";
-import { Button, buttonVariants } from "@/shared/components/shadcn/ui/button";
+} from "@/features/platform/data"
+import { Badge } from "@/shared/components/shadcn/ui/badge"
+import { Button, buttonVariants } from "@/shared/components/shadcn/ui/button"
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/shared/components/shadcn/ui/field";
-import { Input } from "@/shared/components/shadcn/ui/input";
-import { cn } from "@/shared/lib/utils";
+} from "@/shared/components/shadcn/ui/field"
+import { Input } from "@/shared/components/shadcn/ui/input"
+import { cn } from "@/shared/lib/utils"
 
-export const Route = createFileRoute("/")({ component: LandingPage });
+export const Route = createFileRoute("/")({ component: LandingPage })
 
 const previewMatches = [
   {
@@ -63,7 +63,7 @@ const previewMatches = [
     score: 81,
     tone: "bg-[#dcc0a6] text-[#3f2819]",
   },
-];
+]
 
 const pipelineSteps = [
   "Upload CV",
@@ -71,7 +71,7 @@ const pipelineSteps = [
   "Cocokkan pekerjaan",
   "Skor & alasan",
   "Saran berikutnya",
-];
+]
 
 const scopeItems = [
   {
@@ -89,7 +89,7 @@ const scopeItems = [
     body: "Pantau alur kerja, kelola approval HRD, konfigurasi model scoring, dan kontrol akses pengguna serta lowongan.",
     icon: RouteIcon,
   },
-];
+]
 
 const featureCards = [
   {
@@ -116,7 +116,7 @@ const featureCards = [
     description:
       "Antarmuka terpisah untuk jobseeker, HRD, dan admin -- masing-masing dengan fitur yang relevan.",
   },
-];
+]
 
 const contactInfo = [
   {
@@ -137,7 +137,7 @@ const contactInfo = [
     value: "Jakarta, Indonesia",
     href: undefined,
   },
-];
+]
 
 const aboutSignals = [
   {
@@ -155,7 +155,7 @@ const aboutSignals = [
     label: "Waktu respon",
     description: "Alur review kandidat dan koordinasi tim lebih cepat.",
   },
-];
+]
 
 const featureFlow = [
   {
@@ -170,7 +170,7 @@ const featureFlow = [
     title: "Actionable output",
     body: "Tim langsung dapat prioritas kandidat, alasan skor, dan area pengembangan.",
   },
-];
+]
 
 const testimonials = [
   {
@@ -212,38 +212,38 @@ const testimonials = [
     avatarUrl:
       "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=240&q=80",
   },
-];
+]
 
 type ContactFormValues = {
-  name: string;
-  email: string;
-  company: string;
-  message: string;
-};
+  name: string
+  email: string
+  company: string
+  message: string
+}
 
 function LandingPage() {
-  const shouldReduceMotion = useReducedMotion();
-  const aboutSectionRef = useRef<HTMLElement | null>(null);
+  const shouldReduceMotion = useReducedMotion()
+  const aboutSectionRef = useRef<HTMLElement | null>(null)
   const { scrollYProgress: aboutProgress } = useScroll({
     target: aboutSectionRef,
     offset: ["start end", "end start"],
-  });
+  })
   const scopeParallaxY = [
     useTransform(aboutProgress, [0, 1], [-38, 42]),
     useTransform(aboutProgress, [0, 1], [14, -30]),
     useTransform(aboutProgress, [0, 1], [-10, 24]),
-  ];
+  ]
   const transition = {
     duration: shouldReduceMotion ? 0 : 0.7,
     ease: [0.32, 0.72, 0, 1],
-  } as const;
+  } as const
   const reveal = {
     hidden: {
       opacity: shouldReduceMotion ? 1 : 0,
       y: shouldReduceMotion ? 0 : 28,
     },
     show: { opacity: 1, y: 0 },
-  };
+  }
   const stagger = {
     hidden: {},
     show: {
@@ -252,7 +252,7 @@ function LandingPage() {
         delayChildren: shouldReduceMotion ? 0 : 0.05,
       },
     },
-  } as const;
+  } as const
   const contactForm = useForm({
     defaultValues: {
       name: "",
@@ -262,18 +262,18 @@ function LandingPage() {
     } as ContactFormValues,
     onSubmit: async ({ value }) => {
       const subject = encodeURIComponent(
-        `CareerMatch inquiry from ${value.name.trim()}`,
-      );
+        `CareerMatch inquiry from ${value.name.trim()}`
+      )
       const body = encodeURIComponent(
-        `Nama: ${value.name.trim()}\nEmail: ${value.email.trim()}\nPerusahaan: ${value.company.trim() || "-"}\n\nPesan:\n${value.message.trim()}`,
-      );
-      const mailtoUrl = `mailto:contact@careermatch.id?subject=${subject}&body=${body}`;
+        `Nama: ${value.name.trim()}\nEmail: ${value.email.trim()}\nPerusahaan: ${value.company.trim() || "-"}\n\nPesan:\n${value.message.trim()}`
+      )
+      const mailtoUrl = `mailto:contact@careermatch.id?subject=${subject}&body=${body}`
       if (typeof window !== "undefined") {
-        window.location.href = mailtoUrl;
+        window.location.href = mailtoUrl
       }
-      toast.success("Draft email siap. Lanjut kirim dari email client.");
+      toast.success("Draft email siap. Lanjut kirim dari email client.")
     },
-  });
+  })
 
   return (
     <main className="min-h-dvh bg-[#f8f3eb] text-[#2e2016]">
@@ -361,7 +361,7 @@ function LandingPage() {
                 </Button>
                 <a
                   className={cn(
-                    buttonVariants({ size: "lg", variant: "outline" }),
+                    buttonVariants({ size: "lg", variant: "outline" })
                   )}
                   href="#features"
                 >
@@ -464,7 +464,7 @@ function LandingPage() {
                           <span
                             className={cn(
                               "flex h-9 min-w-16 items-center justify-center rounded-md px-3 font-medium text-sm",
-                              match.tone,
+                              match.tone
                             )}
                           >
                             {match.score}%
@@ -490,7 +490,7 @@ function LandingPage() {
                           "size-4",
                           index < 3
                             ? "text-accent-foreground"
-                            : "text-muted-foreground",
+                            : "text-muted-foreground"
                         )}
                       />
                       <span className="text-sm">{step}</span>
@@ -543,7 +543,7 @@ function LandingPage() {
                 <a
                   className={cn(
                     buttonVariants({ size: "lg" }),
-                    "rounded-full bg-[#3b271b] text-[#fdf7ef] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#513525]",
+                    "rounded-full bg-[#3b271b] text-[#fdf7ef] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#513525]"
                   )}
                   href="#contact"
                 >
@@ -552,7 +552,7 @@ function LandingPage() {
                 <a
                   className={cn(
                     buttonVariants({ size: "lg", variant: "outline" }),
-                    "rounded-full border-[#b9967a] bg-[#f8efe2] text-[#4b3324]",
+                    "rounded-full border-[#b9967a] bg-[#f8efe2] text-[#4b3324]"
                   )}
                   href="#features"
                 >
@@ -567,7 +567,7 @@ function LandingPage() {
                   className={cn(
                     "relative transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform",
                     index === 1 && "lg:translate-x-8",
-                    index === 2 && "lg:-translate-x-4",
+                    index === 2 && "lg:-translate-x-4"
                   )}
                   key={item.title}
                   style={{ y: shouldReduceMotion ? 0 : scopeParallaxY[index] }}
@@ -751,7 +751,7 @@ function LandingPage() {
               <motion.article
                 className={cn(
                   "transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
-                  index === 1 && "md:-translate-y-4",
+                  index === 1 && "md:-translate-y-4"
                 )}
                 key={feature.title}
                 variants={reveal}
@@ -943,7 +943,7 @@ function LandingPage() {
                                     "h-1.5 flex-1 rounded-full",
                                     barIndex <= index + 2
                                       ? "bg-[#6a4a35]"
-                                      : "bg-[#dac7b5]",
+                                      : "bg-[#dac7b5]"
                                   )}
                                   key={`${item.name}-${barKey}`}
                                 />
@@ -1110,9 +1110,9 @@ function LandingPage() {
                 <form
                   className="mt-8"
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    void contactForm.handleSubmit();
+                    event.preventDefault()
+                    event.stopPropagation()
+                    void contactForm.handleSubmit()
                   }}
                 >
                   <FieldGroup className="gap-5">
@@ -1386,5 +1386,5 @@ function LandingPage() {
         </div>
       </motion.footer>
     </main>
-  );
+  )
 }

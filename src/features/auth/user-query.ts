@@ -1,27 +1,27 @@
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query"
 
-import { getUserRole, type AppRole } from "./role-routing";
+import { getUserRole, type AppRole } from "./role-routing"
 
-export const userQueryKey = ["user"] as const;
+export const userQueryKey = ["user"] as const
 
 export type UserCache = {
-  email: string;
-  id: string;
-  image: string | null;
-  name: string;
-  role: AppRole;
-};
+  email: string
+  id: string
+  image: string | null
+  name: string
+  role: AppRole
+}
 
 export function normalizeUser(value: unknown): UserCache | null {
   if (!isRecord(value)) {
-    return null;
+    return null
   }
 
-  const id = typeof value.id === "string" ? value.id : "";
-  const email = typeof value.email === "string" ? value.email : "";
+  const id = typeof value.id === "string" ? value.id : ""
+  const email = typeof value.email === "string" ? value.email : ""
 
   if (!id || !email) {
-    return null;
+    return null
   }
 
   return {
@@ -30,18 +30,18 @@ export function normalizeUser(value: unknown): UserCache | null {
     image: typeof value.image === "string" ? value.image : null,
     name: typeof value.name === "string" ? value.name : "",
     role: getUserRole(value),
-  };
+  }
 }
 
 export function setUserCache(queryClient: QueryClient, value: unknown) {
-  const normalized = normalizeUser(value);
+  const normalized = normalizeUser(value)
 
   if (!normalized) {
-    queryClient.removeQueries({ queryKey: userQueryKey });
-    return;
+    queryClient.removeQueries({ queryKey: userQueryKey })
+    return
   }
 
-  queryClient.setQueryData(userQueryKey, normalized);
+  queryClient.setQueryData(userQueryKey, normalized)
 }
 
 export function useUserQuery(options?: { enabled?: boolean }) {
@@ -51,21 +51,21 @@ export function useUserQuery(options?: { enabled?: boolean }) {
     queryFn: fetchUserProfile,
     queryKey: userQueryKey,
     staleTime: 5 * 60 * 1000,
-  });
+  })
 }
 
 async function fetchUserProfile(): Promise<UserCache | null> {
   const response = await fetch("/api/account/profile", {
     method: "GET",
-  });
-  const payload = await readPayload(response);
+  })
+  const payload = await readPayload(response)
 
   if (response.status === 401) {
-    return null;
+    return null
   }
 
   if (!response.ok) {
-    throw new Error(readErrorMessage(payload, response.status));
+    throw new Error(readErrorMessage(payload, response.status))
   }
 
   if (
@@ -73,20 +73,20 @@ async function fetchUserProfile(): Promise<UserCache | null> {
     payload === null ||
     !("profile" in payload)
   ) {
-    throw new Error("Response profile tidak valid.");
+    throw new Error("Response profile tidak valid.")
   }
 
-  return normalizeUser(payload.profile);
+  return normalizeUser(payload.profile)
 }
 
 async function readPayload(response: Response): Promise<unknown> {
-  const contentType = response.headers.get("content-type") ?? "";
+  const contentType = response.headers.get("content-type") ?? ""
 
   if (contentType.includes("application/json")) {
-    return response.json();
+    return response.json()
   }
 
-  return response.text();
+  return response.text()
 }
 
 function readErrorMessage(payload: unknown, status: number) {
@@ -96,7 +96,7 @@ function readErrorMessage(payload: unknown, status: number) {
     "error" in payload &&
     typeof payload.error === "string"
   ) {
-    return payload.error;
+    return payload.error
   }
 
   if (
@@ -105,16 +105,16 @@ function readErrorMessage(payload: unknown, status: number) {
     "message" in payload &&
     typeof payload.message === "string"
   ) {
-    return payload.message;
+    return payload.message
   }
 
   if (typeof payload === "string" && payload.length > 0) {
-    return payload;
+    return payload
   }
 
-  return `Server merespons dengan status ${status}`;
+  return `Server merespons dengan status ${status}`
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null
 }

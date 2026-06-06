@@ -1,22 +1,22 @@
-import { useQueryClient } from "@tanstack/react-query";
-import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query"
+import * as React from "react"
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client"
 
 import {
   normalizeUser,
   setUserCache,
   useUserQuery,
   userQueryKey,
-} from "./user-query";
+} from "./user-query"
 
 function getUserSignature(user: {
-  email: string;
-  id: string;
-  image: string | null;
-  name: string;
-  role: string;
-  updatedAt?: string | Date | null;
+  email: string
+  id: string
+  image: string | null
+  name: string
+  role: string
+  updatedAt?: string | Date | null
 }) {
   return [
     user.id ?? "",
@@ -25,45 +25,45 @@ function getUserSignature(user: {
     user.image ?? "",
     user.role ?? "",
     user.updatedAt ? String(user.updatedAt) : "",
-  ].join("|");
+  ].join("|")
 }
 
 export function SessionUserCacheSync() {
-  const queryClient = useQueryClient();
-  const session = authClient.useSession();
-  const [isClient, setIsClient] = React.useState(false);
-  const lastUserSignatureRef = React.useRef<string | null>(null);
+  const queryClient = useQueryClient()
+  const session = authClient.useSession()
+  const [isClient, setIsClient] = React.useState(false)
+  const lastUserSignatureRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
-    setIsClient(true);
-  }, []);
+    setIsClient(true)
+  }, [])
 
   useUserQuery({
     enabled: isClient && Boolean(session.data?.user),
-  });
+  })
 
   React.useEffect(() => {
     if (session.isPending) {
-      return;
+      return
     }
 
-    const sessionUser = normalizeUser(session.data?.user);
+    const sessionUser = normalizeUser(session.data?.user)
 
     if (!sessionUser) {
-      queryClient.removeQueries({ queryKey: userQueryKey });
-      lastUserSignatureRef.current = null;
-      return;
+      queryClient.removeQueries({ queryKey: userQueryKey })
+      lastUserSignatureRef.current = null
+      return
     }
 
-    const nextUserSignature = getUserSignature(sessionUser);
+    const nextUserSignature = getUserSignature(sessionUser)
 
     if (lastUserSignatureRef.current === nextUserSignature) {
-      return;
+      return
     }
 
-    setUserCache(queryClient, sessionUser);
-    lastUserSignatureRef.current = nextUserSignature;
-  }, [queryClient, session.data?.user, session.isPending]);
+    setUserCache(queryClient, sessionUser)
+    lastUserSignatureRef.current = nextUserSignature
+  }, [queryClient, session.data?.user, session.isPending])
 
-  return null;
+  return null
 }

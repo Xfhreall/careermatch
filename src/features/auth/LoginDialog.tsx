@@ -11,7 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/shadcn/ui/dialog"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/components/shadcn/ui/field"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
 import {
   Tabs,
@@ -26,11 +31,7 @@ interface LoginDialogProps {
 }
 
 const GoogleIcon = () => (
-  <svg
-    aria-hidden="true"
-    className="size-4"
-    viewBox="0 0 24 24"
-  >
+  <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24">
     <path
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       fill="#4285F4"
@@ -103,7 +104,9 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
 
       if (signUpError) {
         setError(signUpError.message ?? "Pendaftaran gagal. Silakan coba lagi.")
-        toast.error(signUpError.message ?? "Pendaftaran gagal. Silakan coba lagi.")
+        toast.error(
+          signUpError.message ?? "Pendaftaran gagal. Silakan coba lagi."
+        )
         setIsSubmitting(false)
         return
       }
@@ -124,8 +127,12 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
     })
 
     if (googleError) {
-      setError(googleError.message ?? "Login dengan Google gagal. Silakan coba lagi.")
-      toast.error(googleError.message ?? "Login dengan Google gagal. Silakan coba lagi.")
+      setError(
+        googleError.message ?? "Login dengan Google gagal. Silakan coba lagi."
+      )
+      toast.error(
+        googleError.message ?? "Login dengan Google gagal. Silakan coba lagi."
+      )
       setIsSubmitting(false)
       return
     }
@@ -232,7 +239,9 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
                 <signUpForm.Field name="name">
                   {(field) => (
                     <Field>
-                      <FieldLabel htmlFor="signup-name">Nama Lengkap</FieldLabel>
+                      <FieldLabel htmlFor="signup-name">
+                        Nama Lengkap
+                      </FieldLabel>
                       <Input
                         id="signup-name"
                         type="text"
@@ -270,7 +279,9 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
                 <signUpForm.Field name="password">
                   {(field) => (
                     <Field>
-                      <FieldLabel htmlFor="signup-password">Kata Sandi</FieldLabel>
+                      <FieldLabel htmlFor="signup-password">
+                        Kata Sandi
+                      </FieldLabel>
                       <Input
                         id="signup-password"
                         type="password"

@@ -140,7 +140,9 @@ function InterviewCoachPage() {
                     <textarea
                       className="mt-4 min-h-32 w-full resize-y rounded-lg border border-border bg-card p-3 text-sm leading-6 outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="Tulis jawaban STAR kamu..."
                       value={field.state.value}
                     />

@@ -1,29 +1,29 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router"
 import {
   AnimatePresence,
   motion,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
-} from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+} from "framer-motion"
+import { useEffect, useRef, useState } from "react"
 
-import { AuthNavButton } from "@/features/auth/AuthNavButton";
-import { cn } from "@/shared/lib/utils";
+import { AuthNavButton } from "@/features/auth/AuthNavButton"
+import { cn } from "@/shared/lib/utils"
 
-import { BriefcaseBusinessIcon } from "../data";
+import { BriefcaseBusinessIcon } from "../data"
 
 const navItems = [
   { href: "/#home", label: "Home" },
   { href: "/#about", label: "About" },
   { href: "/#features", label: "Features" },
   { href: "/#contact", label: "Contact" },
-] as const;
+] as const
 
 const overlayVariants = {
   closed: { opacity: 0 },
   open: { opacity: 1 },
-};
+}
 
 const listVariants = {
   closed: {
@@ -38,106 +38,104 @@ const listVariants = {
       staggerChildren: 0.07,
     },
   },
-};
+}
 
 const itemVariants = {
   closed: { opacity: 0, y: 20 },
   open: { opacity: 1, y: 0 },
-};
+}
 
 export function AppNavbar() {
-  const shouldReduceMotion = useReducedMotion();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isShrunk, setIsShrunk] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeHref, setActiveHref] = useState("/#home");
-  const lastScrollY = useRef(0);
-  const scrollY = useScroll().scrollY;
+  const shouldReduceMotion = useReducedMotion()
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isShrunk, setIsShrunk] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeHref, setActiveHref] = useState("/#home")
+  const lastScrollY = useRef(0)
+  const scrollY = useScroll().scrollY
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = lastScrollY.current;
-    setIsScrolled(latest > 16);
+    const previous = lastScrollY.current
+    setIsScrolled(latest > 16)
 
     if (!shouldReduceMotion) {
       if (latest > previous && latest > 90) {
-        setIsShrunk(true);
+        setIsShrunk(true)
       } else if (latest < previous - 8) {
-        setIsShrunk(false);
+        setIsShrunk(false)
       }
     }
 
-    lastScrollY.current = latest;
-  });
+    lastScrollY.current = latest
+  })
 
   useEffect(() => {
     if (!mobileOpen) {
-      return;
+      return
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setMobileOpen(false);
+        setMobileOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("keydown", handleEscape);
+    window.addEventListener("keydown", handleEscape)
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [mobileOpen]);
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", handleEscape)
+    }
+  }, [mobileOpen])
 
   useEffect(() => {
-    const sectionIds = navItems.map((item) => item.href.replace("/#", ""));
+    const sectionIds = navItems.map((item) => item.href.replace("/#", ""))
     const sections = sectionIds
       .map((id) => document.getElementById(id))
-      .filter(Boolean) as HTMLElement[];
+      .filter(Boolean) as HTMLElement[]
 
     const setActiveSection = (sectionId: string) => {
-      const nextHref = `/#${sectionId}`;
-      setActiveHref((previous) =>
-        previous === nextHref ? previous : nextHref,
-      );
-    };
+      const nextHref = `/#${sectionId}`
+      setActiveHref((previous) => (previous === nextHref ? previous : nextHref))
+    }
 
     const setFromHash = () => {
-      const hash = window.location.hash.replace("#", "");
+      const hash = window.location.hash.replace("#", "")
       if (!hash || !sectionIds.includes(hash)) {
-        setActiveSection("home");
-        return;
+        setActiveSection("home")
+        return
       }
-      setActiveSection(hash);
-    };
+      setActiveSection(hash)
+    }
 
     const setFromViewport = () => {
       if (sections.length === 0) {
-        return;
+        return
       }
 
       const viewportMarker = Math.min(
         260,
-        Math.max(112, Math.round(window.innerHeight * 0.34)),
-      );
-      let currentSection = sections[0]?.id ?? "home";
+        Math.max(112, Math.round(window.innerHeight * 0.34))
+      )
+      let currentSection = sections[0]?.id ?? "home"
 
       for (const section of sections) {
         if (section.getBoundingClientRect().top <= viewportMarker) {
-          currentSection = section.id;
+          currentSection = section.id
         }
       }
 
-      const scrollBottom = window.innerHeight + window.scrollY;
-      const fullHeight = document.documentElement.scrollHeight;
+      const scrollBottom = window.innerHeight + window.scrollY
+      const fullHeight = document.documentElement.scrollHeight
       if (fullHeight - scrollBottom < 20) {
-        currentSection = sections[sections.length - 1]?.id ?? currentSection;
+        currentSection = sections[sections.length - 1]?.id ?? currentSection
       }
 
-      setActiveSection(currentSection);
-    };
+      setActiveSection(currentSection)
+    }
 
     const observer =
       sections.length > 0
@@ -147,41 +145,41 @@ export function AppNavbar() {
                 .filter((entry) => entry.isIntersecting)
                 .sort(
                   (first, second) =>
-                    second.intersectionRatio - first.intersectionRatio,
-                )[0];
+                    second.intersectionRatio - first.intersectionRatio
+                )[0]
 
               if (visible) {
-                setActiveSection((visible.target as HTMLElement).id);
+                setActiveSection((visible.target as HTMLElement).id)
               }
             },
             {
               root: null,
               rootMargin: "-26% 0px -56% 0px",
               threshold: [0.16, 0.4, 0.72],
-            },
+            }
           )
-        : null;
+        : null
 
-    setFromHash();
-    setFromViewport();
+    setFromHash()
+    setFromViewport()
 
     for (const section of sections) {
-      observer?.observe(section);
+      observer?.observe(section)
     }
 
-    window.addEventListener("hashchange", setFromHash);
-    window.addEventListener("scroll", setFromViewport, { passive: true });
-    window.addEventListener("resize", setFromViewport);
+    window.addEventListener("hashchange", setFromHash)
+    window.addEventListener("scroll", setFromViewport, { passive: true })
+    window.addEventListener("resize", setFromViewport)
 
     return () => {
-      observer?.disconnect();
-      window.removeEventListener("hashchange", setFromHash);
-      window.removeEventListener("scroll", setFromViewport);
-      window.removeEventListener("resize", setFromViewport);
-    };
-  }, []);
+      observer?.disconnect()
+      window.removeEventListener("hashchange", setFromHash)
+      window.removeEventListener("scroll", setFromViewport)
+      window.removeEventListener("resize", setFromViewport)
+    }
+  }, [])
 
-  const handleNavClick = () => setMobileOpen(false);
+  const handleNavClick = () => setMobileOpen(false)
 
   return (
     <>
@@ -195,7 +193,7 @@ export function AppNavbar() {
           }}
           className={cn(
             "pointer-events-auto relative mx-auto border border-[#d8c6b2]/70 bg-[#fffaf2]/90 shadow-[0_22px_55px_-32px_rgba(78,51,32,0.45)] backdrop-blur-xl",
-            isScrolled ? "rounded-[2.2rem]" : "rounded-[2.4rem]",
+            isScrolled ? "rounded-[2.2rem]" : "rounded-[2.4rem]"
           )}
           initial={false}
           transition={
@@ -207,21 +205,21 @@ export function AppNavbar() {
           <div
             className={cn(
               "mx-auto flex w-full items-center px-4 sm:px-5 lg:px-6",
-              isShrunk ? "h-[3.45rem]" : "h-[3.9rem]",
+              isShrunk ? "h-[3.45rem]" : "h-[3.9rem]"
             )}
           >
             <Link className="group flex items-center gap-2.5" to="/">
               <span
                 className={cn(
                   "flex items-center justify-center rounded-full border border-[#cdb8a3] bg-[#f6ede2] text-[#5f402d] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
-                  isShrunk ? "size-8" : "size-9",
+                  isShrunk ? "size-8" : "size-9"
                 )}
               >
                 <BriefcaseBusinessIcon
                   aria-hidden="true"
                   className={cn(
                     "transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
-                    isShrunk ? "size-3.5" : "size-4",
+                    isShrunk ? "size-3.5" : "size-4"
                   )}
                   strokeWidth={1.5}
                 />
@@ -233,14 +231,14 @@ export function AppNavbar() {
 
             <div className="mx-auto hidden items-center gap-1.5 md:flex">
               {navItems.map((item) => {
-                const isActive = activeHref === item.href;
+                const isActive = activeHref === item.href
                 return (
                   <a
                     className={cn(
                       "relative rounded-full px-4 py-2 font-medium text-sm transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
                       isActive
                         ? "text-[#2e1e13]"
-                        : "text-[#674a37] hover:bg-[#efe2d4] hover:text-[#2e1e13]",
+                        : "text-[#674a37] hover:bg-[#efe2d4] hover:text-[#2e1e13]"
                     )}
                     href={item.href}
                     key={item.href}
@@ -258,7 +256,7 @@ export function AppNavbar() {
                     ) : null}
                     <span className="relative z-10">{item.label}</span>
                   </a>
-                );
+                )
               })}
             </div>
 
@@ -336,14 +334,14 @@ export function AppNavbar() {
             >
               <div className="mx-auto w-full max-w-md space-y-3">
                 {navItems.map((item) => {
-                  const isActive = activeHref === item.href;
+                  const isActive = activeHref === item.href
                   return (
                     <motion.a
                       className={cn(
                         "flex min-h-12 items-center justify-between rounded-2xl border px-5 py-3 font-medium text-xl",
                         isActive
                           ? "border-[#e5ccb3] bg-[#fff7eb] text-[#3a2416]"
-                          : "border-[#a7876d52] bg-[#fffaf11a] text-[#f8eee1]",
+                          : "border-[#a7876d52] bg-[#fffaf11a] text-[#f8eee1]"
                       )}
                       href={item.href}
                       key={item.href}
@@ -354,13 +352,13 @@ export function AppNavbar() {
                       <span
                         className={cn(
                           "flex size-8 items-center justify-center rounded-full",
-                          isActive ? "bg-[#f1e2cf]" : "bg-[#fff1dd1f]",
+                          isActive ? "bg-[#f1e2cf]" : "bg-[#fff1dd1f]"
                         )}
                       >
                         ↗
                       </span>
                     </motion.a>
-                  );
+                  )
                 })}
               </div>
 
@@ -379,5 +377,5 @@ export function AppNavbar() {
         ) : null}
       </AnimatePresence>
     </>
-  );
+  )
 }

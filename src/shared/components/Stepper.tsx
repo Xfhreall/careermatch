@@ -19,10 +19,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
   const shouldReduceMotion = useReducedMotion()
 
   return (
-    <ol
-      className={cn("flex flex-col", className)}
-      role="list"
-    >
+    <ol className={cn("flex flex-col", className)} role="list">
       {steps.map((step, index) => {
         const state: "completed" | "active" | "pending" =
           index < activeStep
@@ -42,9 +39,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
                 aria-hidden="true"
                 className={cn(
                   "absolute top-9 left-4 -translate-x-1/2 h-[calc(100%-2rem)] w-px transition-colors duration-300",
-                  state === "completed"
-                    ? "bg-primary"
-                    : "bg-border",
+                  state === "completed" ? "bg-primary" : "bg-border"
                 )}
               />
             )}
@@ -57,7 +52,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
                 state === "active" &&
                   "border-primary bg-primary/10 text-primary",
                 state === "pending" &&
-                  "border-border bg-card text-muted-foreground",
+                  "border-border bg-card text-muted-foreground"
               )}
             >
               {state === "completed" ? (
@@ -96,7 +91,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
                   "font-medium text-sm leading-snug transition-colors duration-300",
                   state === "completed" && "text-foreground",
                   state === "active" && "text-primary",
-                  state === "pending" && "text-muted-foreground",
+                  state === "pending" && "text-muted-foreground"
                 )}
               >
                 {step.label}
@@ -107,7 +102,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
                     "text-xs leading-relaxed transition-colors duration-300",
                     state === "active"
                       ? "text-foreground/70"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                 >
                   {step.description}

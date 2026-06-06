@@ -8,7 +8,7 @@ type RuntimeEnvGlobal = typeof globalThis & {
 }
 
 function getRuntimeEnvValue(
-  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>,
+  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>
 ): string | undefined {
   const runtimeValue = (globalThis as RuntimeEnvGlobal).__env__?.[key]
   if (typeof runtimeValue === "string") return runtimeValue
@@ -21,7 +21,10 @@ const ensuredBuckets = new Set<string>()
 export function getSupabaseStatus() {
   const missing = [
     ["SUPABASE_URL", getRuntimeEnvValue("SUPABASE_URL")],
-    ["SUPABASE_SERVICE_ROLE_KEY", getRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY")],
+    [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      getRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY"),
+    ],
   ]
     .filter(([, value]) => !value)
     .map(([key]) => key)
