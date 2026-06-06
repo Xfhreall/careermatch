@@ -33,9 +33,13 @@ const authKv = await KVNamespace("auth-kv", {
   adopt: true,
 })
 
+// Hyperdrive requires a session-mode connection (typically port 5432).
+// Connecting Hyperdrive to a transaction-mode pooler (port 6543) causes connection timeouts.
+const hyperdriveUrl = databaseUrl.replace(":6543", ":5432")
+
 const hyperdrive = await Hyperdrive("hyperdrive", {
   name: `${app.name}-${app.stage}-hyperdrive`,
-  origin: alchemy.secret(databaseUrl),
+  origin: alchemy.secret(hyperdriveUrl),
   caching: {
     disabled: true,
   },

@@ -8,12 +8,12 @@ import { hashPassword, verifyPassword } from "@/lib/password"
 interface KVNamespace {
   get(
     key: string,
-    type?: "text" | "json" | "arrayBuffer" | "stream",
+    type?: "text" | "json" | "arrayBuffer" | "stream"
   ): Promise<unknown>
   put(
     key: string,
     value: string,
-    options?: { expirationTtl?: number },
+    options?: { expirationTtl?: number }
   ): Promise<void>
   delete(key: string): Promise<void>
 }
@@ -42,7 +42,7 @@ function getRuntimeKV(): KVNamespace | undefined {
 }
 
 function getRuntimeEnvValue(
-  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>,
+  key: keyof NonNullable<RuntimeEnvGlobal["__env__"]>
 ) {
   const runtimeValue = (globalThis as RuntimeEnvGlobal).__env__?.[key]
 
@@ -65,7 +65,7 @@ function resolveTrustedOrigins(baseURL: string) {
       "http://localhost:3001",
       "http://127.0.0.1:3000",
       "http://127.0.0.1:3001",
-    ]),
+    ])
   )
 }
 
@@ -136,8 +136,10 @@ function createKVStorage(kv: KVNamespace) {
       return kv.get(key, "json")
     },
     set: async (key: string, value: unknown, ttl?: number) => {
+      // Cloudflare KV requires expirationTtl to be at least 60 seconds.
+      const resolvedTtl = ttl !== undefined ? Math.max(ttl, 60) : undefined
       await kv.put(key, JSON.stringify(value), {
-        expirationTtl: ttl,
+        expirationTtl: resolvedTtl,
       })
     },
     delete: async (key: string) => {
@@ -314,7 +316,7 @@ function getAuthInstance() {
 }
 
 export async function withAuth<T>(
-  callback: (auth: AuthInstance) => Promise<T>,
+  callback: (auth: AuthInstance) => Promise<T>
 ): Promise<T> {
   const auth = getAuthInstance()
   return callback(auth)
