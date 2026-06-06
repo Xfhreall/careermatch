@@ -16,7 +16,7 @@
 | **AI Pipeline** | n8n Webhook (external workflow untuk CV parsing & job matching) |
 | **DB Client** | Supabase JS Client |
 | **Validation** | Zod |
-| **Deployment** | Cloudflare Workers + Wrangler |
+| **Deployment** | Cloudflare Workers + Alchemy |
 | **Language** | TypeScript |
 | **Package Manager** | Bun |
 | **Linting/Formatting** | Biome |
@@ -73,7 +73,7 @@ careermatch/
 │   └── README.md
 │
 ├── .agents/                 # AI agent skill definitions (development aids)
-├── wrangler.toml            # Cloudflare Workers configuration
+├── alchemy.run.ts           # Cloudflare Workers infrastructure (Alchemy)
 ├── vite.config.ts           # Vite build configuration
 ├── nitro.config.ts          # Nitro server configuration
 ├── tsconfig.json            # TypeScript configuration
@@ -90,7 +90,7 @@ careermatch/
 ### Prerequisites
 
 - **Bun** (package manager & runtime) — [install](https://bun.sh)
-- **Node.js** >= 22 (for wrangler)
+- **Cloudflare account + API token** — untuk deploy via Alchemy
 - **Supabase project** — [supabase.com](https://supabase.com)
 - **Google OAuth credentials** — for Better Auth Google login
 - **n8n webhook URL** — for AI CV analysis pipeline (opsional untuk development)
@@ -112,17 +112,22 @@ cp .env.example .env
 | Variable | Deskripsi |
 |----------|-----------|
 | `N8N_WEBHOOK_URL` | Webhook n8n untuk AI job matching pipeline |
+| `CHATBOT_URL` | Webhook n8n untuk interview/chatbot jobseeker |
 | `BETTER_AUTH_URL` | URL aplikasi (http://localhost:3000 untuk dev) |
 | `BETTER_AUTH_SECRET` | Secret key untuk Better Auth |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
-| `DATABASE_URL` | PostgreSQL connection string (Supabase direct) |
+| `DATABASE_URL` | PostgreSQL connection string; dipakai Alchemy sebagai origin Hyperdrive |
+| `SUPABASE_POOLER_URL` | Optional override untuk origin Hyperdrive jika ingin memakai Supabase pooler |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side) |
 | `SUPABASE_DB_PASSWORD` | Password Supabase database |
+| `CLOUDFLARE_API_TOKEN` | Token Cloudflare untuk deploy Alchemy |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID Cloudflare |
+| `CLOUDFLARE_WORKER_NAME` | Nama Worker production (opsional, default `careermatch-capstone`) |
 
-> **Catatan:** Nilai-nilai default sudah ada di `wrangler.toml` untuk production. Untuk development lokal, isi `.env` dengan credential yang sesuai.
+> **Security:** jangan commit `.env`, `.dev.vars`, `.alchemy`, atau `wrangler.toml`. Production secret harus disimpan di GitHub Secrets atau secret manager lokal, lalu dibaca oleh `alchemy.run.ts` via `process.env` dan `alchemy.secret()`.
 
 ### 3. Database Setup
 
@@ -148,11 +153,19 @@ bun run db:seed
 
 ### 4. Development Server
 
+Default development server sekarang jalan lewat Alchemy. Command ini akan build `.output` lebih dulu, lalu menjalankan Worker lokal di port 3000:
+
 ```bash
 bun run dev
 ```
 
 Aplikasi akan berjalan di **http://localhost:3000**
+
+Jika hanya ingin Vite dev server tanpa Cloudflare/Alchemy, gunakan:
+
+```bash
+bun run dev:vite
+```
 
 ### 5. Build & Deploy
 
@@ -162,13 +175,13 @@ Aplikasi akan berjalan di **http://localhost:3000**
 bun run build
 ```
 
-**Deploy ke Cloudflare Workers:**
+**Deploy ke Cloudflare Workers via Alchemy:**
 
 ```bash
-npx wrangler deploy
+bun run deploy:build
 ```
 
-Atau gunakan GitHub Actions (lihat `.github/workflows/deploy.yml`).
+Atau gunakan GitHub Actions (lihat `.github/workflows/deploy.yml`). Pastikan semua variable production tersedia sebagai **GitHub Secrets**, bukan file repo.
 
 ---
 
@@ -250,9 +263,13 @@ User melihat hasil (3 tab):
 
 | Script | Deskripsi |
 |--------|-----------|
-| `bun run dev` | Jalankan development server (port 3000) |
+| `bun run dev` | Build lalu jalankan Worker lokal via Alchemy (port 3000) |
+| `bun run dev:alchemy` | Sama seperti `dev`; eksplisit memakai Alchemy |
+| `bun run dev:vite` | Jalankan Vite dev server biasa tanpa Alchemy |
 | `bun run build` | Build production |
 | `bun run preview` | Preview production build |
+| `bun run deploy` | Deploy output build ke Cloudflare via Alchemy |
+| `bun run deploy:build` | Build lalu deploy ke Cloudflare via Alchemy |
 | `bun run test` | Jalankan test (Vitest) |
 | `bun run lint` | Lint dengan Biome |
 | `bun run format` | Format kode dengan Biome |
@@ -264,12 +281,34 @@ User melihat hasil (3 tab):
 
 ## Deployment
 
-Deployment otomatis via **GitHub Actions** (`.github/workflows/deploy.yml`) ke **Cloudflare Workers**.
+Deployment otomatis via **GitHub Actions** (`.github/workflows/deploy.yml`) ke **Cloudflare Workers** menggunakan **Alchemy**.
 
-Konfigurasi Worker ada di `wrangler.toml`:
+Konfigurasi Worker ada di `alchemy.run.ts`:
 - Runtime: `nodejs_compat`
-- Binding: Hyperdrive (PostgreSQL via connection pooler), KV Namespace
+- Assets: `.output/public`
+- Entrypoint: `.output/server/index.mjs`
+- Binding: Hyperdrive, `AUTH_KV`, dan environment secret via `alchemy.secret()`
 - Observability: traces & logs enabled
+
+Secret deployment tidak disimpan di repo. Untuk CI, set minimal GitHub Secrets berikut:
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+N8N_WEBHOOK_URL
+CHATBOT_URL
+BETTER_AUTH_URL
+BETTER_AUTH_SECRET
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+DATABASE_URL
+SUPABASE_POOLER_URL
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_DB_PASSWORD
+```
+
+`CLOUDFLARE_WORKER_NAME` opsional jika ingin override nama Worker.
 
 ---
 
