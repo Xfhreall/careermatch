@@ -30,6 +30,13 @@ export type ScoringConfigRecord = {
   weight: number
 }
 
+export type PlatformSettingRecord = {
+  description: string
+  key: string
+  label: string
+  value: boolean
+}
+
 export type SuperadminSnapshot = {
   auditEvents: Array<[string, string, string]>
   hrdApprovalQueue: Array<{
@@ -46,5 +53,6 @@ export type SuperadminSnapshot = {
     title: string
     value: string
   }>
+  platformSettings: PlatformSettingRecord[]
   scoringWeights: ScoringConfigRecord[]
 }

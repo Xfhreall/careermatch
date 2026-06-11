@@ -25,6 +25,11 @@ type SessionUser = {
 
 type AccessRole = "hrd" | "jobseeker" | "superadmin"
 
+const CHATBOT_GUARD_SETTING_KEY = "chatbot_guard_enabled"
+const CHATBOT_GUARD_SETTING_LABEL = "Chatbot guard rule"
+const CHATBOT_GUARD_SETTING_DESCRIPTION =
+  "Enable topical relevance filtering before jobseeker chatbot messages reach the webhook."
+
 export async function uploadCvToStorage(userId: string, file: File) {
   const supabase = getSupabaseAdmin()
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase()
@@ -400,7 +405,7 @@ export async function deleteHrdJob(
 }
 
 export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
-  const [jobs, users, approvals, metrics, scoring, models, audit] =
+  const [jobs, users, approvals, metrics, scoring, models, settings, audit] =
     await Promise.all([
       listHrdJobs(),
       selectRows("users", "id, name, email, role, status"),
@@ -411,6 +416,7 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       selectRows("workflow_metrics", "key, title, value, label"),
       selectRows("scoring_configs", "key, label, weight"),
       selectRows("model_configs", "key, agent, model, purpose"),
+      selectRows("platform_settings", "key, label, description, value"),
       selectRows("audit_events", "created_at, event, detail", {
         limit: 8,
         orderBy: "created_at",
@@ -447,12 +453,37 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       title: String(row.title),
       value: String(row.value),
     })),
+    platformSettings: settings.map((row) => ({
+      description: String(row.description ?? ""),
+      key: String(row.key),
+      label: String(row.label),
+      value: readBooleanSetting(row.value, true),
+    })),
     scoringWeights: scoring.map((row) => ({
       key: String(row.key),
       label: String(row.label),
       weight: Number(row.weight),
     })),
   }
+}
+
+export async function getChatbotGuardEnabled() {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("platform_settings")
+    .select("value")
+    .eq("key", CHATBOT_GUARD_SETTING_KEY)
+    .maybeSingle()
+
+  if (error) {
+    if (isMissingPlatformSettingsTable(error)) {
+      return true
+    }
+
+    throw new Error(error.message)
+  }
+
+  return readBooleanSetting(data?.value, true)
 }
 
 export async function updateScoringConfig(input: {
@@ -504,6 +535,38 @@ export async function updateModelConfig(input: {
     actor_id: input.reviewerId,
     detail: `${input.key} model set to ${input.model}`,
     event: "model.config.updated",
+  })
+}
+
+export async function updatePlatformSetting(input: {
+  key: string
+  reviewerId: string
+  value: boolean
+}) {
+  if (input.key !== CHATBOT_GUARD_SETTING_KEY) {
+    throw new Error("Setting platform tidak dikenal.")
+  }
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.from("platform_settings").upsert(
+    {
+      description: CHATBOT_GUARD_SETTING_DESCRIPTION,
+      key: input.key,
+      label: CHATBOT_GUARD_SETTING_LABEL,
+      updated_by: input.reviewerId,
+      value: input.value,
+    },
+    { onConflict: "key" }
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  await supabase.from("audit_events").insert({
+    actor_id: input.reviewerId,
+    detail: `${input.key} set to ${input.value ? "enabled" : "disabled"}`,
+    event: "platform.setting.updated",
   })
 }
 
@@ -890,6 +953,35 @@ function formatEventTime(value: unknown) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+function readBooleanSetting(value: unknown, fallback: boolean) {
+  if (typeof value === "boolean") {
+    return value
+  }
+
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") {
+      return true
+    }
+
+    if (value.toLowerCase() === "false") {
+      return false
+    }
+  }
+
+  return fallback
+}
+
+function isMissingPlatformSettingsTable(error: unknown) {
+  if (!isRecord(error)) {
+    return false
+  }
+
+  return (
+    error.code === "42P01" ||
+    String(error.message ?? "").includes("platform_settings")
+  )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

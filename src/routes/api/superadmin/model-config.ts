@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/server/auth-session"
 import {
   getSuperadminSnapshot,
   updateModelConfig,
+  updatePlatformSetting,
   updateScoringConfig,
 } from "@/lib/server/careermatch-repository"
 import { jsonError } from "@/lib/server/http"
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/api/superadmin/model-config")({
             kind?: string
             model?: string
             purpose?: string
+            value?: boolean
             weight?: number
           }
 
@@ -69,6 +71,23 @@ export const Route = createFileRoute("/api/superadmin/model-config")({
               model,
               purpose,
               reviewerId: auth.session.user.id,
+            })
+
+            return Response.json(await getSuperadminSnapshot())
+          }
+
+          if (payload.kind === "platform") {
+            if (typeof payload.value !== "boolean") {
+              return Response.json(
+                { error: "Nilai setting platform harus boolean." },
+                { status: 400 }
+              )
+            }
+
+            await updatePlatformSetting({
+              key: payload.key,
+              reviewerId: auth.session.user.id,
+              value: payload.value,
             })
 
             return Response.json(await getSuperadminSnapshot())

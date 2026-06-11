@@ -113,6 +113,22 @@ export async function updateSuperadminModelConfig(input: {
   })
 }
 
+export async function updateSuperadminPlatformSetting(input: {
+  key: string
+  value: boolean
+}): Promise<SuperadminSnapshot> {
+  return fetchJson("/api/superadmin/model-config", {
+    body: JSON.stringify({
+      ...input,
+      kind: "platform",
+    }),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "PATCH",
+  })
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
   const payload = await readPayload(response)
