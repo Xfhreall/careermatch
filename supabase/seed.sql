@@ -229,6 +229,21 @@ set
   purpose = excluded.purpose,
   updated_by = excluded.updated_by;
 
+insert into public.platform_settings (key, label, description, value, updated_by)
+values (
+  'chatbot_guard_enabled',
+  'Chatbot guard rule',
+  'Enable topical relevance filtering before jobseeker chatbot messages reach the webhook.',
+  'true'::jsonb,
+  'user_seed_superadmin'
+)
+on conflict (key) do update
+set
+  label = excluded.label,
+  description = excluded.description,
+  value = public.platform_settings.value,
+  updated_by = excluded.updated_by;
+
 insert into public.audit_events (id, actor_id, event, detail, created_at)
 values
   ('a1000000-0000-4000-8000-000000000001', 'user_seed_superadmin', 'workflow.retry', 'n8n retry after timeout', now() - interval '50 minutes'),
