@@ -6,15 +6,23 @@ import { toast } from "sonner"
 import {
   fetchSuperadminSnapshot,
   updateSuperadminModelConfig,
+  updateSuperadminPlatformSetting,
   updateSuperadminScoringConfig,
 } from "@/features/platform/api-client"
 import type {
   ModelConfigRecord,
+  PlatformSettingRecord,
   ScoringConfigRecord,
 } from "@/features/platform/types"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
+import { Switch } from "@/shared/components/shadcn/ui/switch"
 import {
   Table,
   TableBody,
@@ -24,6 +32,8 @@ import {
   TableRow,
 } from "@/shared/components/shadcn/ui/table"
 
+const CHATBOT_GUARD_SETTING_KEY = "chatbot_guard_enabled"
+
 export function SuperadminModelConfigContainer() {
   const snapshotQuery = useQuery({
     queryFn: fetchSuperadminSnapshot,
@@ -32,6 +42,9 @@ export function SuperadminModelConfigContainer() {
 
   const modelConfig = snapshotQuery.data?.modelConfig ?? []
   const scoringWeights = snapshotQuery.data?.scoringWeights ?? []
+  const chatbotGuardSetting = snapshotQuery.data?.platformSettings.find(
+    (item) => item.key === CHATBOT_GUARD_SETTING_KEY
+  )
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -41,6 +54,8 @@ export function SuperadminModelConfigContainer() {
           Pengaturan model AI dan bobot scoring dari database produksi.
         </p>
       </div>
+
+      <ChatbotGuardSetting setting={chatbotGuardSetting} />
 
       <div className="rounded-lg border border-border bg-card">
         <div className="border-border border-b p-4">
@@ -89,6 +104,59 @@ export function SuperadminModelConfigContainer() {
           <div className="h-32 rounded-lg bg-muted" />
         </div>
       )}
+    </div>
+  )
+}
+
+function ChatbotGuardSetting({ setting }: { setting?: PlatformSettingRecord }) {
+  const queryClient = useQueryClient()
+  const enabled = setting?.value ?? true
+  const mutation = useMutation({
+    mutationFn: updateSuperadminPlatformSetting,
+    onSuccess: (payload) => {
+      queryClient.setQueryData(["superadmin-snapshot"], payload)
+      toast.success("Aturan guard chatbot tersimpan.")
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Aturan guard chatbot gagal disimpan."
+      )
+    },
+  })
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Field className="gap-1">
+          <div className="flex items-center gap-2">
+            <FieldLabel htmlFor="chatbot-guard-enabled">
+              Chatbot guard rule
+            </FieldLabel>
+            <Badge variant={enabled ? "outline" : "secondary"}>
+              {enabled ? "Aktif" : "Nonaktif"}
+            </Badge>
+          </div>
+          <FieldDescription>
+            Aktifkan untuk memfilter pesan di luar konteks CareerMatch sebelum
+            dikirim ke webhook. Nonaktifkan jika ingin percakapan chatbot lebih
+            bebas saat testing atau demo.
+          </FieldDescription>
+        </Field>
+        <Switch
+          aria-label="Aktifkan chatbot guard rule"
+          checked={enabled}
+          disabled={mutation.isPending}
+          id="chatbot-guard-enabled"
+          onCheckedChange={(checked) =>
+            mutation.mutate({
+              key: setting?.key ?? CHATBOT_GUARD_SETTING_KEY,
+              value: checked,
+            })
+          }
+        />
+      </div>
     </div>
   )
 }
