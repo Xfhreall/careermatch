@@ -21,6 +21,7 @@ export type JobseekerChatbotResponse = {
   conversationTitle: string
   conversations: JobseekerChatbotConversationSummary[]
   guard?: {
+    enabled?: boolean
     score: number
     threshold: number
   }

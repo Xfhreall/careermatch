@@ -11,6 +11,7 @@ import { requireRole } from "@/lib/server/auth-session"
 import {
   appendChatbotMessage,
   createChatbotConversation,
+  getChatbotGuardEnabled,
   listChatbotConversations,
   loadAnalysisResult,
   loadChatbotConversation,
@@ -119,8 +120,17 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
           }
         }
 
+        const history = sanitizeChatbotHistory(
+          (existingConversation?.messages ?? []).map(({ content, role }) => ({
+            content,
+            role,
+          }))
+        )
+        const chatbotGuardEnabled = await getChatbotGuardEnabled()
         const assessment = assessChatbotPrompt({
+          guardEnabled: chatbotGuardEnabled,
           hasAnalysisContext: Boolean(analysisContext),
+          hasConversationContext: history.length > 0,
           message,
         })
 
@@ -137,12 +147,6 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
           )
         }
 
-        const history = sanitizeChatbotHistory(
-          (existingConversation?.messages ?? []).map(({ content, role }) => ({
-            content,
-            role,
-          }))
-        )
         const conversation =
           existingConversation ??
           (await createChatbotConversation({
@@ -170,6 +174,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
               app: "CareerMatch",
               chatInput: message,
               guard: {
+                enabled: chatbotGuardEnabled,
                 allowedTopics: [
                   "CV",
                   "job match",
@@ -178,8 +183,10 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
                   "interview preparation",
                   "CareerMatch platform guidance",
                 ],
-                instruction:
-                  "Jawab hanya dalam konteks CareerMatch untuk jobseeker. Jika appliedJob tersedia, gunakan posisi yang dilamar dan deskripsi pekerjaannya sebagai konteks utama. Jika pertanyaan keluar dari topik CV, job match, skill gap, karier, atau interview, tolak singkat dan arahkan kembali ke topik CareerMatch. Jangan mengarang data lowongan atau hasil analisis yang tidak tersedia pada konteks.",
+                hasConversationContext: history.length > 0,
+                instruction: chatbotGuardEnabled
+                  ? "Jawab dalam konteks CareerMatch untuk jobseeker. Perlakukan jawaban singkat seperti mulai, lanjut, siap, atau respons simulasi interview sebagai bagian dari percakapan aktif saat history tersedia. Jika appliedJob tersedia, gunakan posisi yang dilamar dan deskripsi pekerjaannya sebagai konteks utama. Untuk latihan interview, beri feedback singkat, ajukan follow-up, dan lanjutkan alur secara interaktif. Jika pertanyaan benar-benar keluar dari topik CV, job match, skill gap, karier, atau interview, tolak singkat dan arahkan kembali ke topik CareerMatch. Jangan mengarang data lowongan atau hasil analisis yang tidak tersedia pada konteks."
+                  : "Chatbot guard dinonaktifkan oleh superadmin. Tetap bantu jobseeker secara interaktif dan prioritaskan konteks CareerMatch, terutama CV, job match, skill gap, karier, pengalaman kerja, dan interview. Jangan mengarang data lowongan atau hasil analisis yang tidak tersedia pada konteks.",
                 relevanceScore: assessment.score,
                 threshold: assessment.threshold,
               },
@@ -233,6 +240,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
           content: answer,
           conversationId: conversation.id,
           metadata: {
+            guardEnabled: chatbotGuardEnabled,
             guardScore: assessment.score,
             guardThreshold: assessment.threshold,
           },
@@ -250,6 +258,7 @@ export const Route = createFileRoute("/api/jobseeker/chatbot")({
           conversationTitle: conversation.title,
           conversations,
           guard: {
+            enabled: chatbotGuardEnabled,
             score: assessment.score,
             threshold: assessment.threshold,
           },
