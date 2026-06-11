@@ -29,6 +29,55 @@ describe("jobseeker chatbot guard", () => {
     expect(result.allowed).toBe(true)
   })
 
+  it("allows interactive replies after a chatbot session has started", () => {
+    expect(
+      assessChatbotPrompt({
+        hasAnalysisContext: false,
+        hasConversationContext: true,
+        message: "mulai",
+      }).allowed
+    ).toBe(true)
+
+    const result = assessChatbotPrompt({
+      hasAnalysisContext: false,
+      hasConversationContext: true,
+      message:
+        "Di situasi seperti itu saya akan tetap tenang, menghubungi pihak terkait, lalu menyelesaikan tugas yang paling prioritas.",
+    })
+
+    expect(result.allowed).toBe(true)
+    expect(result.score).toBeGreaterThanOrEqual(result.threshold)
+  })
+
+  it("allows work experience narratives during active interview practice", () => {
+    const result = assessChatbotPrompt({
+      hasAnalysisContext: false,
+      hasConversationContext: true,
+      message:
+        "Saya pernah bertanggung jawab menyelesaikan tugas dengan deadline ketat bersama tim kecil, lalu membagi prioritas agar hasilnya tetap selesai tepat waktu.",
+    })
+
+    expect(result.allowed).toBe(true)
+  })
+
+  it("can disable topical guard while keeping basic input validation", () => {
+    expect(
+      assessChatbotPrompt({
+        guardEnabled: false,
+        hasAnalysisContext: false,
+        message: "Berikan resep makan malam sederhana.",
+      }).allowed
+    ).toBe(true)
+
+    expect(
+      assessChatbotPrompt({
+        guardEnabled: false,
+        hasAnalysisContext: false,
+        message: " ",
+      }).allowed
+    ).toBe(false)
+  })
+
   it("blocks unrelated prompts before they reach the webhook", () => {
     const result = assessChatbotPrompt({
       hasAnalysisContext: false,
