@@ -405,7 +405,7 @@ export async function deleteHrdJob(
 }
 
 export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
-  const [jobs, users, approvals, metrics, scoring, models, settings, audit] =
+  const [jobs, users, approvals, analyses, scoring, models, settings, audit] =
     await Promise.all([
       listHrdJobs(),
       selectRows("users", "id, name, email, role, status"),
@@ -413,7 +413,7 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
         "hrd_approval_requests",
         "id, company_name, email, status, created_at"
       ),
-      selectRows("workflow_metrics", "key, title, value, label"),
+      selectRows("analysis_jobs", "id, status"),
       selectRows("scoring_configs", "key, label, weight"),
       selectRows("model_configs", "key, agent, model, purpose"),
       selectRows("platform_settings", "key, label, description, value"),
@@ -448,11 +448,32 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       model: String(row.model),
       purpose: String(row.purpose),
     })),
-    monitoringCards: metrics.map((row) => ({
-      label: String(row.label),
-      title: String(row.title),
-      value: String(row.value),
-    })),
+    monitoringCards: [
+      {
+        label: "registered accounts",
+        title: "Users",
+        value: String(users.length),
+      },
+      {
+        label: "published positions",
+        title: "Active jobs",
+        value: String(jobs.filter((job) => job.status === "Active").length),
+      },
+      {
+        label: "completed analyses",
+        title: "CV analyses",
+        value: String(
+          analyses.filter((row) => row.status === "completed").length
+        ),
+      },
+      {
+        label: "pending review",
+        title: "HRD approvals",
+        value: String(
+          approvals.filter((row) => row.status === "pending").length
+        ),
+      },
+    ],
     platformSettings: settings.map((row) => ({
       description: String(row.description ?? ""),
       key: String(row.key),

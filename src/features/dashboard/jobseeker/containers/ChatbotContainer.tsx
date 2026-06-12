@@ -41,6 +41,7 @@ import { Skeleton } from "@/shared/components/shadcn/ui/skeleton"
 import { cn } from "@/shared/lib/utils"
 
 type LocalMessage = JobseekerChatbotMessage & {
+  optimistic?: boolean
   pending?: boolean
 }
 
@@ -120,20 +121,22 @@ export function ChatbotContainer({
     onSuccess: async (response) => {
       setActiveConversationId(response.conversationId)
       setMessages((current) =>
-        current
-          .filter((message) => !message.pending)
-          .concat(response.assistantMessage)
+        settleChatbotMessages(
+          current,
+          response.userMessage,
+          response.assistantMessage
+        )
       )
       const activeData = {
         activeConversation: {
           analysisId: mode === "analysis" ? selectedAnalysisId : undefined,
           createdAt: response.userMessage.createdAt,
           id: response.conversationId,
-          messages: [
-            ...messages.filter((message) => !message.pending),
+          messages: settleChatbotMessages(
+            messages,
             response.userMessage,
-            response.assistantMessage,
-          ],
+            response.assistantMessage
+          ),
           mode,
           title: response.conversationTitle,
           updatedAt: response.assistantMessage.createdAt,
@@ -176,6 +179,9 @@ export function ChatbotContainer({
       setMessages((current) =>
         current
           .filter((message) => !message.pending)
+          .map((message) =>
+            message.optimistic ? { ...message, optimistic: false } : message
+          )
           .concat(createLocalMessage("assistant", content))
       )
       toast.error(content)
@@ -273,7 +279,10 @@ export function ChatbotContainer({
       return
     }
 
-    const userMessage = createLocalMessage("user", message)
+    const userMessage = {
+      ...createLocalMessage("user", message),
+      optimistic: true,
+    }
     const pendingMessage = createLocalMessage(
       "assistant",
       "CareerMatch sedang memproses jawaban.",
@@ -913,6 +922,36 @@ function createLocalMessage(
     pending,
     role,
   }
+}
+
+function settleChatbotMessages(
+  current: LocalMessage[],
+  userMessage: JobseekerChatbotMessage,
+  assistantMessage: JobseekerChatbotMessage
+) {
+  const settled = current.filter((message) => !message.pending)
+  let optimisticUserIndex = -1
+
+  for (let index = settled.length - 1; index >= 0; index -= 1) {
+    const message = settled[index]
+
+    if (message?.optimistic && message.role === "user") {
+      optimisticUserIndex = index
+      break
+    }
+  }
+
+  if (optimisticUserIndex >= 0) {
+    settled[optimisticUserIndex] = userMessage
+  } else if (!settled.some((message) => message.id === userMessage.id)) {
+    settled.push(userMessage)
+  }
+
+  if (!settled.some((message) => message.id === assistantMessage.id)) {
+    settled.push(assistantMessage)
+  }
+
+  return settled
 }
 
 function formatDate(value: string) {
