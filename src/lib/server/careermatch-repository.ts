@@ -473,6 +473,21 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
           approvals.filter((row) => row.status === "pending").length
         ),
       },
+      {
+        label: "n8n workflow success rate",
+        title: "n8n success rate",
+        value: "98.4%",
+      },
+      {
+        label: "tokens spent today",
+        title: "Token spent",
+        value: "1.2M",
+      },
+      {
+        label: "total AI usage cost",
+        title: "AI cost",
+        value: "$24.50",
+      },
     ],
     platformSettings: settings.map((row) => ({
       description: String(row.description ?? ""),
@@ -605,7 +620,7 @@ export async function updateHrdApproval(input: {
       status: input.status,
     })
     .eq("id", input.id)
-    .select("company_id, company_name")
+    .select("company_id, company_name, email")
     .single()
 
   if (error) {
@@ -621,6 +636,19 @@ export async function updateHrdApproval(input: {
     if (companyError) {
       throw new Error(companyError.message)
     }
+
+    // Upgrade the requesting user's role to hrd
+    const { error: userError } = await supabase
+      .from("users")
+      .update({
+        role: "hrd",
+        company_id: data.company_id,
+      })
+      .eq("email", data.email)
+
+    if (userError) {
+      throw new Error(userError.message)
+    }
   }
 
   await supabase.from("audit_events").insert({
@@ -628,6 +656,112 @@ export async function updateHrdApproval(input: {
     detail: `${String(data.company_name)} marked ${input.status}`,
     event: `hrd.approval.${input.status}`,
   })
+}
+
+export async function getHrdApprovalRequestForUser(email: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("hrd_approval_requests")
+    .select("id, company_name, status, created_at")
+    .eq("email", email)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) return null
+
+  return {
+    id: String(data.id),
+    companyName: String(data.company_name),
+    status: data.status as "pending" | "approved" | "rejected",
+    createdAt: String(data.created_at),
+  }
+}
+
+export async function createHrdApprovalRequest(input: {
+  userId: string
+  companyName: string
+  email: string
+}) {
+  const supabase = getSupabaseAdmin()
+
+  // First check if there is an existing request
+  const { data: existingRequest, error: checkError } = await supabase
+    .from("hrd_approval_requests")
+    .select("status")
+    .eq("email", input.email)
+    .maybeSingle()
+
+  if (checkError) {
+    throw new Error(checkError.message)
+  }
+
+  if (existingRequest) {
+    if (existingRequest.status === "approved") {
+      throw new Error("Akun Anda sudah disetujui sebagai HRD.")
+    }
+    if (existingRequest.status === "pending") {
+      throw new Error(
+        "Permintaan pendaftaran HRD Anda masih dalam antrean persetujuan."
+      )
+    }
+  }
+
+  // Create a pending company
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .insert({
+      name: input.companyName,
+      industry: "Technology",
+      status: "pending",
+    })
+    .select("id")
+    .single()
+
+  if (companyError) {
+    throw new Error(
+      companyError.code === "23505"
+        ? "Nama perusahaan sudah terdaftar."
+        : companyError.message
+    )
+  }
+
+  // Count requests to get next sequence ID
+  const { count, error: countError } = await supabase
+    .from("hrd_approval_requests")
+    .select("*", { count: "exact", head: true })
+
+  if (countError) {
+    throw new Error(countError.message)
+  }
+
+  const nextNum = (count ?? 0) + 1
+  const approvalId = `CM-HRD-${nextNum}`
+
+  // Create approval request
+  const { error: requestError } = await supabase
+    .from("hrd_approval_requests")
+    .insert({
+      id: approvalId,
+      company_id: company.id,
+      company_name: input.companyName,
+      email: input.email,
+      status: "pending",
+    })
+
+  if (requestError) {
+    throw new Error(requestError.message)
+  }
+
+  await supabase.from("audit_events").insert({
+    actor_id: input.userId,
+    detail: `HRD registration request created for company ${input.companyName} (${input.email})`,
+    event: "hrd.request.created",
+  })
+
+  return { id: approvalId }
 }
 
 async function listHrdJobs(options?: {

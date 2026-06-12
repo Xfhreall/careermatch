@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form"
-import { useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { UploadIcon } from "lucide-react"
 import { type ChangeEvent, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -14,7 +14,12 @@ import {
   changeAccountPassword,
   updateAccountProfile,
 } from "@/features/dashboard/api-client"
+import {
+  fetchHrdRequestStatus,
+  submitHrdRequest,
+} from "@/features/platform/api-client"
 import { authClient } from "@/lib/auth-client"
+import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import {
   Field,
@@ -40,6 +45,40 @@ export function ProfileSettingsContainer() {
   const currentUser = userQuery.data ?? normalizeUser(session.data?.user)
   const role = getUserRole(currentUser ?? session.data?.user)
   const roleLabel = getRoleLabel(role)
+
+  const requestStatusQuery = useQuery({
+    queryKey: ["hrd-request-status"],
+    queryFn: fetchHrdRequestStatus,
+    enabled: role === "jobseeker",
+  })
+
+  const submitHrdMutation = useMutation({
+    mutationFn: submitHrdRequest,
+    onSuccess: () => {
+      void requestStatusQuery.refetch()
+      toast.success("Permintaan registrasi HRD berhasil diajukan.")
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal mengajukan permintaan HRD."
+      )
+    },
+  })
+
+  const hrdForm = useForm({
+    defaultValues: {
+      companyName: "",
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.companyName.trim()) {
+        toast.info("Nama perusahaan wajib diisi.")
+        return
+      }
+      submitHrdMutation.mutate({ companyName: value.companyName.trim() })
+    },
+  })
 
   const [profileName, setProfileName] = useState("")
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(
@@ -391,6 +430,149 @@ export function ProfileSettingsContainer() {
           </form>
         </section>
       </div>
+
+      {role === "jobseeker" && (
+        <section className="mt-6 rounded-lg border border-border bg-card p-6">
+          <h2 className="font-medium text-xl">Registrasi Akun HRD</h2>
+          <p className="mt-2 text-muted-foreground text-sm">
+            Ajukan permohonan registrasi akun HRD untuk perusahaan Anda agar
+            bisa memposting lowongan kerja dan mencari kandidat.
+          </p>
+
+          {requestStatusQuery.isLoading ? (
+            <p className="mt-4 text-muted-foreground text-sm">
+              Memuat status pengajuan...
+            </p>
+          ) : requestStatusQuery.data ? (
+            <div className="mt-5 rounded-md border border-border bg-muted/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-sm">
+                    Perusahaan:{" "}
+                    <span className="text-foreground">
+                      {requestStatusQuery.data.companyName}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    Diajukan pada:{" "}
+                    {new Date(
+                      requestStatusQuery.data.createdAt
+                    ).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">Status:</span>
+                  {requestStatusQuery.data.status === "pending" ? (
+                    <Badge
+                      className="border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      variant="outline"
+                    >
+                      Menunggu Persetujuan
+                    </Badge>
+                  ) : requestStatusQuery.data.status === "rejected" ? (
+                    <Badge variant="destructive">Ditolak</Badge>
+                  ) : (
+                    <Badge
+                      className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      variant="outline"
+                    >
+                      Disetujui
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {requestStatusQuery.data.status === "pending" && (
+                <p className="mt-3 text-muted-foreground text-xs italic">
+                  * Permintaan Anda sedang diproses oleh tim Superadmin. Mohon
+                  tunggu proses verifikasi.
+                </p>
+              )}
+
+              {requestStatusQuery.data.status === "rejected" && (
+                <div className="mt-4 border-border border-t pt-4">
+                  <p className="mb-3 text-destructive text-xs">
+                    Pengajuan Anda sebelumnya ditolak. Anda dapat mengajukan
+                    kembali dengan nama perusahaan lain di bawah ini.
+                  </p>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      void hrdForm.handleSubmit()
+                    }}
+                  >
+                    <hrdForm.Field name="companyName">
+                      {(field) => (
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <Input
+                            id="hrd-company-name-retry"
+                            placeholder="Masukkan nama perusahaan baru"
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            className="max-w-md"
+                          />
+                          <Button
+                            disabled={submitHrdMutation.isPending}
+                            type="submit"
+                          >
+                            {submitHrdMutation.isPending
+                              ? "Mengirim..."
+                              : "Kirim Ulang"}
+                          </Button>
+                        </div>
+                      )}
+                    </hrdForm.Field>
+                  </form>
+                </div>
+              )}
+            </div>
+          ) : (
+            <form
+              className="mt-5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                void hrdForm.handleSubmit()
+              }}
+            >
+              <hrdForm.Field name="companyName">
+                {(field) => (
+                  <Field className="max-w-md">
+                    <FieldLabel htmlFor="hrd-company-name">
+                      Nama Perusahaan
+                    </FieldLabel>
+                    <div className="mt-1 flex flex-col gap-3 sm:flex-row">
+                      <Input
+                        id="hrd-company-name"
+                        placeholder="Contoh: PT Teknologi Maju"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                      <Button
+                        disabled={submitHrdMutation.isPending}
+                        type="submit"
+                      >
+                        {submitHrdMutation.isPending
+                          ? "Mengirim..."
+                          : "Ajukan Registrasi"}
+                      </Button>
+                    </div>
+                    <FieldDescription>
+                      Pastikan nama perusahaan sesuai untuk mempermudah proses
+                      verifikasi.
+                    </FieldDescription>
+                  </Field>
+                )}
+              </hrdForm.Field>
+            </form>
+          )}
+        </section>
+      )}
     </div>
   )
 }

@@ -83,6 +83,21 @@ describe("getSuperadminSnapshot", () => {
         title: "HRD approvals",
         value: "1",
       },
+      {
+        label: "n8n workflow success rate",
+        title: "n8n success rate",
+        value: "98.4%",
+      },
+      {
+        label: "tokens spent today",
+        title: "Token spent",
+        value: "1.2M",
+      },
+      {
+        label: "total AI usage cost",
+        title: "AI cost",
+        value: "$24.50",
+      },
     ])
     expect(from).not.toHaveBeenCalledWith("workflow_metrics")
   })

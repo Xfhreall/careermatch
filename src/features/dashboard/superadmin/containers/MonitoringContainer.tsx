@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ActivityIcon,
+  CheckCircle2Icon,
   CheckIcon,
+  CoinsIcon,
+  CpuIcon,
   GaugeIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
@@ -18,11 +21,77 @@ import { Button } from "@/shared/components/shadcn/ui/button"
 import { Progress } from "@/shared/components/shadcn/ui/progress"
 
 const monitoringIcons = [
-  ActivityIcon,
-  GaugeIcon,
-  ShieldCheckIcon,
   UsersIcon,
+  GaugeIcon,
+  ActivityIcon,
+  ShieldCheckIcon,
+  CheckCircle2Icon,
+  CpuIcon,
+  CoinsIcon,
 ] as const
+
+function getRoleBadge(role: string) {
+  const label =
+    role === "hrd" ? "HRD" : role.charAt(0).toUpperCase() + role.slice(1)
+  switch (role) {
+    case "superadmin":
+      return (
+        <Badge
+          className="border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+          variant="outline"
+        >
+          {label}
+        </Badge>
+      )
+    case "hrd":
+      return (
+        <Badge
+          className="border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          variant="outline"
+        >
+          {label}
+        </Badge>
+      )
+    default:
+      return (
+        <Badge
+          className="border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-400"
+          variant="outline"
+        >
+          {label}
+        </Badge>
+      )
+  }
+}
+
+function getStatusBadge(status: string) {
+  const label = status.charAt(0).toUpperCase() + status.slice(1)
+  switch (status) {
+    case "active":
+      return (
+        <Badge
+          className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          variant="outline"
+        >
+          {label}
+        </Badge>
+      )
+    case "pending":
+      return (
+        <Badge
+          className="border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+          variant="outline"
+        >
+          {label}
+        </Badge>
+      )
+    case "rejected":
+    case "suspended":
+      return <Badge variant="destructive">{label}</Badge>
+    default:
+      return <Badge variant="secondary">{label}</Badge>
+  }
+}
 
 export function SuperadminMonitoringContainer() {
   const queryClient = useQueryClient()
@@ -149,11 +218,9 @@ export function SuperadminMonitoringContainer() {
                   <p className="font-medium">{name}</p>
                   <p className="mt-1 text-muted-foreground text-sm">{id}</p>
                 </div>
-                <div className="flex flex-wrap gap-2 md:justify-end">
-                  <Badge variant="outline">{role}</Badge>
-                  <Badge className="bg-accent text-accent-foreground">
-                    {status}
-                  </Badge>
+                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                  {getRoleBadge(role)}
+                  {getStatusBadge(status)}
                 </div>
               </div>
             ))}

@@ -129,6 +129,29 @@ export async function updateSuperadminPlatformSetting(input: {
   })
 }
 
+export type HrdRequestStatusPayload = {
+  id: string
+  companyName: string
+  status: "pending" | "approved" | "rejected"
+  createdAt: string
+} | null
+
+export async function fetchHrdRequestStatus(): Promise<HrdRequestStatusPayload> {
+  return fetchJson("/api/jobseeker/request-hrd")
+}
+
+export async function submitHrdRequest(input: {
+  companyName: string
+}): Promise<{ id: string }> {
+  return fetchJson("/api/jobseeker/request-hrd", {
+    body: JSON.stringify(input),
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "POST",
+  })
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
   const payload = await readPayload(response)

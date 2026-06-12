@@ -99,6 +99,13 @@ export function JobseekerDashboardContainer() {
               <HistoryIcon aria-hidden="true" data-icon="inline-start" />
               Buka Riwayat
             </Button>
+            <Button
+              nativeButton={false}
+              render={<Link to="/jobseeker/profile" />}
+              variant="ghost"
+            >
+              Daftar Akun HRD
+            </Button>
           </div>
         </div>
 
