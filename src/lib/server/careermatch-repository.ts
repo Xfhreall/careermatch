@@ -14,7 +14,7 @@ import type {
   SuperadminSnapshot,
 } from "@/features/platform/types"
 
-import { getSupabaseAdmin } from "./supabase"
+import { ensureSupabaseBucket, getSupabaseAdmin } from "./supabase"
 
 type SessionUser = {
   companyId?: string | null
@@ -411,7 +411,7 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       selectRows("users", "id, name, email, role, status"),
       selectRows(
         "hrd_approval_requests",
-        "id, company_name, email, status, created_at"
+        "id, company_name, email, status, created_at, description, supporting_file_path, supporting_file_name"
       ),
       selectRows("analysis_jobs", "id, status"),
       selectRows("scoring_configs", "key, label, weight"),
@@ -429,12 +429,34 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
       String(row.event),
       String(row.detail),
     ]),
-    hrdApprovalQueue: approvals.map((row) => ({
-      company: String(row.company_name),
-      email: String(row.email),
-      id: String(row.id),
-      status: toApprovalStatus(String(row.status)),
-    })),
+    hrdApprovalQueue: await Promise.all(
+      approvals.map(async (row) => {
+        let supportingFileUrl: string | null = null
+        if (row.supporting_file_path) {
+          try {
+            const supabase = getSupabaseAdmin()
+            const { data } = await supabase.storage
+              .from("hrd-documents")
+              .createSignedUrl(String(row.supporting_file_path), 60 * 60)
+            supportingFileUrl = data?.signedUrl ?? null
+          } catch (e) {
+            console.error("Failed to generate signed URL:", e)
+          }
+        }
+
+        return {
+          company: String(row.company_name),
+          email: String(row.email),
+          id: String(row.id),
+          status: toApprovalStatus(String(row.status)),
+          description: row.description ? String(row.description) : null,
+          supportingFileName: row.supporting_file_name
+            ? String(row.supporting_file_name)
+            : null,
+          supportingFileUrl,
+        }
+      })
+    ),
     jobs,
     managedUsers: users.map((row) => [
       String(row.id),
@@ -662,7 +684,9 @@ export async function getHrdApprovalRequestForUser(email: string) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from("hrd_approval_requests")
-    .select("id, company_name, status, created_at")
+    .select(
+      "id, company_name, status, created_at, description, supporting_file_name"
+    )
     .eq("email", email)
     .maybeSingle()
 
@@ -677,6 +701,10 @@ export async function getHrdApprovalRequestForUser(email: string) {
     companyName: String(data.company_name),
     status: data.status as "pending" | "approved" | "rejected",
     createdAt: String(data.created_at),
+    description: data.description ? String(data.description) : null,
+    supportingFileName: data.supporting_file_name
+      ? String(data.supporting_file_name)
+      : null,
   }
 }
 
@@ -684,6 +712,8 @@ export async function createHrdApprovalRequest(input: {
   userId: string
   companyName: string
   email: string
+  description?: string | null
+  supportingFile?: File | null
 }) {
   const supabase = getSupabaseAdmin()
 
@@ -706,6 +736,40 @@ export async function createHrdApprovalRequest(input: {
       throw new Error(
         "Permintaan pendaftaran HRD Anda masih dalam antrean persetujuan."
       )
+    }
+  }
+
+  let supportingFilePath: string | null = null
+  let supportingFileName: string | null = null
+
+  if (input.supportingFile) {
+    supportingFileName = input.supportingFile.name
+    const safeName = supportingFileName
+      .replace(/[^a-zA-Z0-9._-]/g, "-")
+      .toLowerCase()
+    supportingFilePath = `${input.userId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
+
+    // Ensure the storage bucket exists
+    await ensureSupabaseBucket("hrd-documents", {
+      allowedMimeTypes: [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ],
+      fileSizeLimit: 10485760, // 10MB
+      public: false,
+    })
+
+    const { error: uploadError } = await supabase.storage
+      .from("hrd-documents")
+      .upload(supportingFilePath, await input.supportingFile.arrayBuffer(), {
+        contentType: input.supportingFile.type || "application/octet-stream",
+        upsert: false,
+      })
+
+    if (uploadError) {
+      throw new Error(`Gagal mengunggah file pendukung: ${uploadError.message}`)
     }
   }
 
@@ -749,6 +813,9 @@ export async function createHrdApprovalRequest(input: {
       company_name: input.companyName,
       email: input.email,
       status: "pending",
+      description: input.description ?? null,
+      supporting_file_path: supportingFilePath,
+      supporting_file_name: supportingFileName,
     })
 
   if (requestError) {

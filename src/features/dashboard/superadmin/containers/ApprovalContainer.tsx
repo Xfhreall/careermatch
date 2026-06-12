@@ -156,10 +156,10 @@ export function SuperadminApprovalContainer() {
             <DialogDescription>{selectedApproval?.email}</DialogDescription>
           </DialogHeader>
           {selectedApproval ? (
-            <div className="grid gap-3">
+            <div className="grid max-h-[70vh] gap-3 overflow-y-auto pr-1">
               <div className="rounded-lg border border-border bg-background p-4">
                 <p className="text-muted-foreground text-sm">Approval ID</p>
-                <p className="mt-2 font-medium">{selectedApproval.id}</p>
+                <p className="mt-1 font-medium">{selectedApproval.id}</p>
               </div>
               <div className="rounded-lg border border-border bg-background p-4">
                 <p className="text-muted-foreground text-sm">Status</p>
@@ -170,6 +170,35 @@ export function SuperadminApprovalContainer() {
                   {selectedApproval.status}
                 </Badge>
               </div>
+              {selectedApproval.description && (
+                <div className="rounded-lg border border-border bg-background p-4">
+                  <p className="text-muted-foreground text-sm">
+                    Deskripsi / Alasan
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-foreground text-sm">
+                    {selectedApproval.description}
+                  </p>
+                </div>
+              )}
+              {selectedApproval.supportingFileName &&
+              selectedApproval.supportingFileUrl ? (
+                <div className="rounded-lg border border-border bg-background p-4">
+                  <p className="text-muted-foreground text-sm">
+                    Dokumen Pendukung
+                  </p>
+                  <div className="mt-2 text-sm">
+                    <a
+                      href={selectedApproval.supportingFileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                    >
+                      <EyeIcon className="size-4" />
+                      {selectedApproval.supportingFileName}
+                    </a>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </DialogContent>

@@ -67,16 +67,23 @@ export function ProfileSettingsContainer() {
     },
   })
 
+  const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null)
+
   const hrdForm = useForm({
     defaultValues: {
       companyName: "",
+      description: "",
     },
     onSubmit: async ({ value }) => {
       if (!value.companyName.trim()) {
         toast.info("Nama perusahaan wajib diisi.")
         return
       }
-      submitHrdMutation.mutate({ companyName: value.companyName.trim() })
+      submitHrdMutation.mutate({
+        companyName: value.companyName.trim(),
+        description: value.description.trim() || null,
+        supportingFile: selectedDocFile,
+      })
     },
   })
 
@@ -453,6 +460,22 @@ export function ProfileSettingsContainer() {
                       {requestStatusQuery.data.companyName}
                     </span>
                   </p>
+                  {requestStatusQuery.data.description && (
+                    <p className="mt-2 text-muted-foreground text-sm">
+                      Deskripsi:{" "}
+                      <span className="text-foreground">
+                        {requestStatusQuery.data.description}
+                      </span>
+                    </p>
+                  )}
+                  {requestStatusQuery.data.supportingFileName && (
+                    <p className="mt-2 text-muted-foreground text-sm">
+                      File Pendukung:{" "}
+                      <span className="text-foreground italic">
+                        {requestStatusQuery.data.supportingFileName}
+                      </span>
+                    </p>
+                  )}
                   <p className="mt-1 text-muted-foreground text-xs">
                     Diajukan pada:{" "}
                     {new Date(
@@ -497,9 +520,10 @@ export function ProfileSettingsContainer() {
                 <div className="mt-4 border-border border-t pt-4">
                   <p className="mb-3 text-destructive text-xs">
                     Pengajuan Anda sebelumnya ditolak. Anda dapat mengajukan
-                    kembali dengan nama perusahaan lain di bawah ini.
+                    kembali dengan data baru di bawah ini.
                   </p>
                   <form
+                    className="max-w-md space-y-4"
                     onSubmit={(event) => {
                       event.preventDefault()
                       event.stopPropagation()
@@ -508,32 +532,79 @@ export function ProfileSettingsContainer() {
                   >
                     <hrdForm.Field name="companyName">
                       {(field) => (
-                        <div className="flex flex-col gap-3 sm:flex-row">
+                        <Field>
+                          <FieldLabel htmlFor="hrd-company-name-retry">
+                            Nama Perusahaan Baru
+                          </FieldLabel>
                           <Input
                             id="hrd-company-name-retry"
-                            placeholder="Masukkan nama perusahaan baru"
+                            placeholder="Contoh: PT Teknologi Maju"
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
-                            className="max-w-md"
+                            className="mt-1"
                           />
-                          <Button
-                            disabled={submitHrdMutation.isPending}
-                            type="submit"
-                          >
-                            {submitHrdMutation.isPending
-                              ? "Mengirim..."
-                              : "Kirim Ulang"}
-                          </Button>
-                        </div>
+                        </Field>
                       )}
                     </hrdForm.Field>
+
+                    <hrdForm.Field name="description">
+                      {(field) => (
+                        <Field>
+                          <FieldLabel htmlFor="hrd-description-retry">
+                            Deskripsi / Alasan Baru
+                          </FieldLabel>
+                          <textarea
+                            id="hrd-description-retry"
+                            placeholder="Tulis deskripsi singkat..."
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            className="mt-1 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                        </Field>
+                      )}
+                    </hrdForm.Field>
+
+                    <Field>
+                      <FieldLabel>Dokumen Pendukung Baru</FieldLabel>
+                      <div className="mt-1 flex items-center gap-3">
+                        <label className="inline-flex cursor-pointer">
+                          <input
+                            type="file"
+                            accept=".pdf,image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null
+                              setSelectedDocFile(file)
+                            }}
+                          />
+                          <span className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm">
+                            <UploadIcon aria-hidden="true" className="size-4" />
+                            Pilih File
+                          </span>
+                        </label>
+                        <span className="text-muted-foreground text-xs">
+                          {selectedDocFile
+                            ? selectedDocFile.name
+                            : "Belum ada file dipilih"}
+                        </span>
+                      </div>
+                    </Field>
+
+                    <Button
+                      disabled={submitHrdMutation.isPending}
+                      type="submit"
+                    >
+                      {submitHrdMutation.isPending
+                        ? "Mengirim..."
+                        : "Kirim Ulang"}
+                    </Button>
                   </form>
                 </div>
               )}
             </div>
           ) : (
             <form
-              className="mt-5"
+              className="mt-5 max-w-md space-y-4"
               onSubmit={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
@@ -542,33 +613,79 @@ export function ProfileSettingsContainer() {
             >
               <hrdForm.Field name="companyName">
                 {(field) => (
-                  <Field className="max-w-md">
+                  <Field>
                     <FieldLabel htmlFor="hrd-company-name">
                       Nama Perusahaan
                     </FieldLabel>
-                    <div className="mt-1 flex flex-col gap-3 sm:flex-row">
-                      <Input
-                        id="hrd-company-name"
-                        placeholder="Contoh: PT Teknologi Maju"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                      />
-                      <Button
-                        disabled={submitHrdMutation.isPending}
-                        type="submit"
-                      >
-                        {submitHrdMutation.isPending
-                          ? "Mengirim..."
-                          : "Ajukan Registrasi"}
-                      </Button>
-                    </div>
+                    <Input
+                      id="hrd-company-name"
+                      placeholder="Contoh: PT Teknologi Maju"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="mt-1"
+                    />
                     <FieldDescription>
-                      Pastikan nama perusahaan sesuai untuk mempermudah proses
-                      verifikasi.
+                      Nama resmi perusahaan Anda.
                     </FieldDescription>
                   </Field>
                 )}
               </hrdForm.Field>
+
+              <hrdForm.Field name="description">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor="hrd-description">
+                      Deskripsi / Alasan Permintaan
+                    </FieldLabel>
+                    <textarea
+                      id="hrd-description"
+                      placeholder="Tulis deskripsi singkat perusahaan atau alasan pengajuan akun HRD..."
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="mt-1 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </Field>
+                )}
+              </hrdForm.Field>
+
+              <Field>
+                <FieldLabel>Dokumen Pendukung</FieldLabel>
+                <div className="mt-1 flex items-center gap-3">
+                  <label className="inline-flex cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        setSelectedDocFile(file)
+                      }}
+                    />
+                    <span className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm">
+                      <UploadIcon aria-hidden="true" className="size-4" />
+                      Pilih File
+                    </span>
+                  </label>
+                  <span className="text-muted-foreground text-xs">
+                    {selectedDocFile
+                      ? selectedDocFile.name
+                      : "Belum ada file dipilih"}
+                  </span>
+                </div>
+                <FieldDescription>
+                  Format: PDF, JPG, PNG, atau WebP (maks 10MB).
+                </FieldDescription>
+              </Field>
+
+              <Button
+                disabled={submitHrdMutation.isPending}
+                type="submit"
+                className="w-full sm:w-auto"
+              >
+                {submitHrdMutation.isPending
+                  ? "Mengirim..."
+                  : "Ajukan Registrasi"}
+              </Button>
             </form>
           )}
         </section>

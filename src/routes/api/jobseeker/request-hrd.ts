@@ -33,11 +33,12 @@ export const Route = createFileRoute("/api/jobseeker/request-hrd")({
         }
 
         try {
-          const payload = (await request.json()) as {
-            companyName?: string
-          }
+          const formData = await request.formData()
+          const companyName = formData.get("companyName") as string | null
+          const description = formData.get("description") as string | null
+          const file = formData.get("file") as File | null
 
-          if (!payload.companyName?.trim()) {
+          if (!companyName?.trim()) {
             return Response.json(
               { error: "Nama perusahaan wajib diisi." },
               { status: 400 }
@@ -46,8 +47,10 @@ export const Route = createFileRoute("/api/jobseeker/request-hrd")({
 
           const result = await createHrdApprovalRequest({
             userId: auth.session.user.id,
-            companyName: payload.companyName.trim(),
+            companyName: companyName.trim(),
             email: auth.session.user.email,
+            description: description?.trim() || null,
+            supportingFile: file || null,
           })
 
           return Response.json(result)

@@ -44,6 +44,9 @@ export type SuperadminSnapshot = {
     email: string
     id: string
     status: "Approved" | "Pending" | "Rejected"
+    description?: string | null
+    supportingFileName?: string | null
+    supportingFileUrl?: string | null
   }>
   jobs: HrdJobRecord[]
   managedUsers: Array<[string, string, string, string]>

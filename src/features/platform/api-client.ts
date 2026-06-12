@@ -134,6 +134,8 @@ export type HrdRequestStatusPayload = {
   companyName: string
   status: "pending" | "approved" | "rejected"
   createdAt: string
+  description?: string | null
+  supportingFileName?: string | null
 } | null
 
 export async function fetchHrdRequestStatus(): Promise<HrdRequestStatusPayload> {
@@ -142,12 +144,20 @@ export async function fetchHrdRequestStatus(): Promise<HrdRequestStatusPayload> 
 
 export async function submitHrdRequest(input: {
   companyName: string
+  description?: string | null
+  supportingFile?: File | null
 }): Promise<{ id: string }> {
+  const body = new FormData()
+  body.append("companyName", input.companyName)
+  if (input.description) {
+    body.append("description", input.description)
+  }
+  if (input.supportingFile) {
+    body.append("file", input.supportingFile)
+  }
+
   return fetchJson("/api/jobseeker/request-hrd", {
-    body: JSON.stringify(input),
-    headers: {
-      "content-type": "application/json",
-    },
+    body,
     method: "POST",
   })
 }

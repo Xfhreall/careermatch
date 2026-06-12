@@ -5,6 +5,7 @@ import {
   CheckIcon,
   CoinsIcon,
   CpuIcon,
+  FileTextIcon,
   GaugeIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
@@ -180,6 +181,31 @@ export function SuperadminMonitoringContainer() {
                   <p className="mt-2 text-muted-foreground text-sm">
                     {approval.email}
                   </p>
+                  {approval.description && (
+                    <p className="mt-2 max-w-xl whitespace-pre-wrap rounded border border-border bg-muted/40 p-2.5 text-foreground text-sm">
+                      <span className="mb-1 block font-medium text-muted-foreground text-xs">
+                        Deskripsi / Alasan:
+                      </span>
+                      {approval.description}
+                    </p>
+                  )}
+                  {approval.supportingFileName &&
+                    approval.supportingFileUrl && (
+                      <div className="mt-2 text-sm">
+                        <span className="mr-2 font-medium text-muted-foreground text-xs">
+                          Dokumen Pendukung:
+                        </span>
+                        <a
+                          href={approval.supportingFileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 font-medium text-primary text-xs hover:underline"
+                        >
+                          <FileTextIcon className="size-3.5" />
+                          {approval.supportingFileName}
+                        </a>
+                      </div>
+                    )}
                 </div>
                 <div className="flex gap-2 md:justify-end">
                   <Button
