@@ -35,10 +35,12 @@ const roleAccessMiddleware = createMiddleware().server(
       return next()
     }
 
-    const session = await withAuth((auth) =>
-      auth.api.getSession({
-        headers: request.headers,
-      })
+    const session = await withAuth(
+      (auth) =>
+        auth.api.getSession({
+          headers: request.headers,
+        }),
+      request
     )
 
     if (!session?.user) {

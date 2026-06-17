@@ -1,3 +1,4 @@
+import { fetchApp } from "@/lib/app-fetch"
 import { normalizeAnalysisResponse } from "./normalize"
 import type {
   AnalysisHistoryItem,
@@ -48,7 +49,7 @@ export async function analyzeCvRequest(
     ...appliedJob,
   })
 
-  const response = await fetch("/api/cv/analyze", {
+  const response = await fetchApp("/api/cv/analyze", {
     method: "POST",
     body,
   })
@@ -67,7 +68,7 @@ export async function analyzeCvRequest(
 }
 
 export async function fetchAnalysisHistory(): Promise<AnalysisHistoryItem[]> {
-  const response = await fetch("/api/cv/history")
+  const response = await fetchApp("/api/cv/history")
   const payload = await readResponsePayload(response)
 
   if (!response.ok) {
@@ -89,7 +90,7 @@ export async function fetchAnalysisHistory(): Promise<AnalysisHistoryItem[]> {
 export async function fetchAnalysisResult(
   analysisId: string
 ): Promise<NormalizedAnalysisResponse | null> {
-  const response = await fetch(
+  const response = await fetchApp(
     `/api/cv/result/${encodeURIComponent(analysisId)}`
   )
   const payload = await readResponsePayload(response)
@@ -110,7 +111,7 @@ export async function fetchAnalysisResult(
 }
 
 export async function deleteAnalysisResultRequest(analysisId: string) {
-  const response = await fetch(
+  const response = await fetchApp(
     `/api/cv/result/${encodeURIComponent(analysisId)}`,
     {
       method: "DELETE",

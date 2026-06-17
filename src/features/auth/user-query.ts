@@ -1,6 +1,8 @@
-import { useQuery, type QueryClient } from "@tanstack/react-query"
+import { type QueryClient, useQuery } from "@tanstack/react-query"
 
-import { getUserRole, type AppRole } from "./role-routing"
+import { fetchApp } from "@/lib/app-fetch"
+
+import { type AppRole, getUserRole } from "./role-routing"
 
 export const userQueryKey = ["user"] as const
 
@@ -55,7 +57,7 @@ export function useUserQuery(options?: { enabled?: boolean }) {
 }
 
 async function fetchUserProfile(): Promise<UserCache | null> {
-  const response = await fetch("/api/account/profile", {
+  const response = await fetchApp("/api/account/profile", {
     method: "GET",
   })
   const payload = await readPayload(response)

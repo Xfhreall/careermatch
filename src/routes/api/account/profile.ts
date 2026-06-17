@@ -114,12 +114,14 @@ export const Route = createFileRoute("/api/account/profile")({
             })
           }
 
-          const updateResponse = await withAuth((auth) =>
-            auth.api.updateUser({
-              asResponse: true,
-              body: updatePayload,
-              headers: request.headers,
-            })
+          const updateResponse = await withAuth(
+            (auth) =>
+              auth.api.updateUser({
+                asResponse: true,
+                body: updatePayload,
+                headers: request.headers,
+              }),
+            request
           )
 
           if (!updateResponse.ok) {

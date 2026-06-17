@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/auth/$")({
         try {
           const result = await withAuth((auth) => {
             return auth.handler(request)
-          })
+          }, request)
           return result
         } catch (e) {
           return new Response(
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/auth/$")({
       },
       POST: async ({ request }: { request: Request }) => {
         try {
-          return await withAuth((auth) => auth.handler(request))
+          return await withAuth((auth) => auth.handler(request), request)
         } catch (e) {
           return new Response(
             JSON.stringify({

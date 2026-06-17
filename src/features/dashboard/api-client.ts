@@ -1,4 +1,5 @@
-import { getUserRole, type AppRole } from "@/features/auth/role-routing"
+import { type AppRole, getUserRole } from "@/features/auth/role-routing"
+import { fetchApp } from "@/lib/app-fetch"
 
 export type AccountProfile = {
   email: string
@@ -24,7 +25,7 @@ export async function updateAccountProfile(input: {
     body.append("avatar", input.avatarFile)
   }
 
-  const response = await fetch("/api/account/profile", {
+  const response = await fetchApp("/api/account/profile", {
     body,
     method: "PATCH",
   })
@@ -52,7 +53,7 @@ export async function changeAccountPassword(input: {
   currentPassword: string
   newPassword: string
 }) {
-  const response = await fetch("/api/account/password", {
+  const response = await fetchApp("/api/account/password", {
     body: JSON.stringify(input),
     headers: {
       "content-type": "application/json",

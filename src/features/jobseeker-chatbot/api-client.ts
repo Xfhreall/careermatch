@@ -1,3 +1,4 @@
+import { fetchApp } from "@/lib/app-fetch"
 import type { ChatbotHistoryMessage } from "./chatbot-guard"
 import type {
   JobseekerChatbotConversation,
@@ -39,7 +40,7 @@ export async function fetchJobseekerChatbotSessions(
   const params = conversationId
     ? `?conversationId=${encodeURIComponent(conversationId)}`
     : ""
-  const response = await fetch(`/api/jobseeker/chatbot${params}`)
+  const response = await fetchApp(`/api/jobseeker/chatbot${params}`)
   const payload = await readResponsePayload(response)
 
   if (!response.ok) {
@@ -61,7 +62,7 @@ export async function fetchJobseekerChatbotSessions(
 export async function sendJobseekerChatbotMessage(
   input: JobseekerChatbotRequest
 ): Promise<JobseekerChatbotResponse> {
-  const response = await fetch("/api/jobseeker/chatbot", {
+  const response = await fetchApp("/api/jobseeker/chatbot", {
     body: JSON.stringify(input),
     headers: {
       "content-type": "application/json",

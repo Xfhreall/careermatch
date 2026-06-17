@@ -49,16 +49,18 @@ export const Route = createFileRoute("/api/account/password")({
             )
           }
 
-          const changeResponse = await withAuth((auth) =>
-            auth.api.changePassword({
-              asResponse: true,
-              body: {
-                currentPassword,
-                newPassword,
-                revokeOtherSessions: false,
-              },
-              headers: request.headers,
-            })
+          const changeResponse = await withAuth(
+            (auth) =>
+              auth.api.changePassword({
+                asResponse: true,
+                body: {
+                  currentPassword,
+                  newPassword,
+                  revokeOtherSessions: false,
+                },
+                headers: request.headers,
+              }),
+            request
           )
 
           if (!changeResponse.ok) {

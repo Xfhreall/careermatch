@@ -3,6 +3,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { Pool } from "pg"
 
 import { hashPassword, verifyPassword } from "@/lib/password"
+import { resolveAuthBaseURL, resolveTrustedOrigins } from "@/lib/runtime-origin"
 
 /** Minimal KVNamespace — avoids depending on @cloudflare/workers-types */
 interface KVNamespace {
@@ -51,22 +52,6 @@ function getRuntimeEnvValue(
   }
 
   return process.env[key]
-}
-
-function resolveBaseURL() {
-  return getRuntimeEnvValue("BETTER_AUTH_URL") ?? "http://localhost:3000"
-}
-
-function resolveTrustedOrigins(baseURL: string) {
-  return Array.from(
-    new Set([
-      baseURL,
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-    ])
-  )
 }
 
 function getDatabaseUrl(): string | undefined {
@@ -156,21 +141,32 @@ type AuthRuntimeConfig = {
   trustedOrigins: string[]
 }
 
-function resolveAuthRuntimeConfig(): AuthRuntimeConfig {
-  const baseURL = resolveBaseURL()
+function resolveAuthRuntimeConfig(request?: Request): AuthRuntimeConfig {
+  const configuredBaseURL = getRuntimeEnvValue("BETTER_AUTH_URL")
+  const baseURL = resolveAuthBaseURL({
+    configuredBaseURL,
+    requestUrl: request?.url,
+  })
 
   return {
     baseURL,
     googleClientId: getRuntimeEnvValue("GOOGLE_CLIENT_ID") ?? "",
     googleClientSecret: getRuntimeEnvValue("GOOGLE_CLIENT_SECRET") ?? "",
     secret: getRuntimeEnvValue("BETTER_AUTH_SECRET"),
-    trustedOrigins: resolveTrustedOrigins(baseURL),
+    trustedOrigins: resolveTrustedOrigins({
+      configuredBaseURL,
+      requestUrl: request?.url,
+    }),
   }
 }
 
-function createAuthInstance(database?: Pool, kv?: KVNamespace) {
+function createAuthInstance(
+  database?: Pool,
+  kv?: KVNamespace,
+  request?: Request
+) {
   const hasDatabase = Boolean(database)
-  const runtimeConfig = resolveAuthRuntimeConfig()
+  const runtimeConfig = resolveAuthRuntimeConfig(request)
 
   return betterAuth({
     account: {
@@ -283,17 +279,17 @@ function createAuthInstance(database?: Pool, kv?: KVNamespace) {
 type AuthInstance = ReturnType<typeof createAuthInstance>
 let authCache: { auth: AuthInstance; key: string } | undefined
 
-function getAuthInstance() {
+function getAuthInstance(request?: Request) {
   const database = getDatabasePool()
   const kv = getRuntimeKV()
-  const runtimeConfig = resolveAuthRuntimeConfig()
+  const runtimeConfig = resolveAuthRuntimeConfig(request)
   const isHyperdrive = Boolean(getRuntimeHyperdrive())
 
   // With Hyperdrive, the pool is recreated each request (to avoid stale
   // TCP connections from frozen Worker isolates).  Don't cache the auth
   // instance — it holds a reference to the now-defunct pool.
   if (isHyperdrive) {
-    return createAuthInstance(database, kv)
+    return createAuthInstance(database, kv, request)
   }
 
   const cacheKey = JSON.stringify({
@@ -307,7 +303,7 @@ function getAuthInstance() {
 
   if (!authCache || authCache.key !== cacheKey) {
     authCache = {
-      auth: createAuthInstance(database, kv),
+      auth: createAuthInstance(database, kv, request),
       key: cacheKey,
     }
   }
@@ -316,8 +312,9 @@ function getAuthInstance() {
 }
 
 export async function withAuth<T>(
-  callback: (auth: AuthInstance) => Promise<T>
+  callback: (auth: AuthInstance) => Promise<T>,
+  request?: Request
 ): Promise<T> {
-  const auth = getAuthInstance()
+  const auth = getAuthInstance(request)
   return callback(auth)
 }
