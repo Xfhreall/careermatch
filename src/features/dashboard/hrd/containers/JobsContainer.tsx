@@ -1,18 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { ColumnDef } from "@tanstack/react-table"
-import { EyeIcon, PencilIcon, SaveIcon, TrashIcon } from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+  EyeIcon,
+  PencilIcon,
+  PlusIcon,
+  SaveIcon,
+  TrashIcon,
+} from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
 
 import {
+  createHrdJob,
   deleteHrdJob,
   fetchHrdDashboard,
   updateHrdJob,
-} from "@/features/platform/api-client"
-import type { HrdJobRecord } from "@/features/platform/types"
-import { DataTable } from "@/shared/components/DataTable"
-import { Badge } from "@/shared/components/shadcn/ui/badge"
-import { Button } from "@/shared/components/shadcn/ui/button"
+} from "@/features/platform/api-client";
+import type { HrdJobRecord } from "@/features/platform/types";
+import { DataTable } from "@/shared/components/DataTable";
+import { Badge } from "@/shared/components/shadcn/ui/badge";
+import { Button } from "@/shared/components/shadcn/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,131 +27,212 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/shadcn/ui/dialog"
+} from "@/shared/components/shadcn/ui/dialog";
 import {
   Field,
   FieldGroup,
   FieldLabel,
-} from "@/shared/components/shadcn/ui/field"
-import { Input } from "@/shared/components/shadcn/ui/input"
+} from "@/shared/components/shadcn/ui/field";
+import { Input } from "@/shared/components/shadcn/ui/input";
 
-type HrdJobStatus = "active" | "closed" | "draft"
-const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
+type HrdJobStatus = "active" | "closed" | "draft";
+const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000;
 
 function statusVariant(
-  status: string
+  status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (status.toLowerCase()) {
     case "active":
     case "approved":
-      return "default"
+      return "default";
     case "pending":
     case "draft":
-      return "secondary"
+      return "secondary";
     case "rejected":
     case "expired":
     case "closed":
-      return "destructive"
+      return "destructive";
     default:
-      return "outline"
+      return "outline";
   }
 }
 
 function normalizeStatus(status: string): HrdJobStatus {
-  const lowerStatus = status.toLowerCase()
+  const lowerStatus = status.toLowerCase();
 
   if (lowerStatus === "closed" || lowerStatus === "draft") {
-    return lowerStatus
+    return lowerStatus;
   }
 
-  return "active"
+  return "active";
 }
 
 function parseSkills(value: string) {
   return value
     .split(",")
     .map((skill) => skill.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 }
 
 export function HrdJobsContainer() {
-  const queryClient = useQueryClient()
-  const [viewJob, setViewJob] = React.useState<HrdJobRecord | null>(null)
-  const [editJob, setEditJob] = React.useState<HrdJobRecord | null>(null)
-  const [editTitle, setEditTitle] = React.useState("")
-  const [editDescription, setEditDescription] = React.useState("")
-  const [editSkills, setEditSkills] = React.useState("")
-  const [editMinYears, setEditMinYears] = React.useState("0")
-  const [editStatus, setEditStatus] = React.useState<HrdJobStatus>("active")
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [confirmCreateOpen, setConfirmCreateOpen] = React.useState(false);
+  const [createTitle, setCreateTitle] = React.useState("");
+  const [createDescription, setCreateDescription] = React.useState("");
+  const [createSkills, setCreateSkills] = React.useState("");
+  const [createMinYears, setCreateMinYears] = React.useState("0");
+  const createSubmissionPendingRef = React.useRef(false);
+  const [viewJob, setViewJob] = React.useState<HrdJobRecord | null>(null);
+  const [editJob, setEditJob] = React.useState<HrdJobRecord | null>(null);
+  const [editTitle, setEditTitle] = React.useState("");
+  const [editDescription, setEditDescription] = React.useState("");
+  const [editSkills, setEditSkills] = React.useState("");
+  const [editMinYears, setEditMinYears] = React.useState("0");
+  const [editStatus, setEditStatus] = React.useState<HrdJobStatus>("active");
   const dashboardQuery = useQuery({
     queryFn: fetchHrdDashboard,
     queryKey: ["hrd-dashboard"],
     refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
-  })
+  });
+  const createMutation = useMutation({
+    mutationFn: createHrdJob,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["hrd-dashboard"] });
+    },
+    onSuccess: (payload, variables) => {
+      queryClient.setQueryData(["hrd-dashboard"], payload);
+      setConfirmCreateOpen(false);
+      setCreateOpen(false);
+      resetCreateForm();
+      toast.success(
+        variables.status === "active"
+          ? "Lowongan berhasil dipublikasikan."
+          : "Lowongan berhasil disimpan sebagai draft.",
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Lowongan gagal dibuat.",
+      );
+    },
+    onSettled: () => {
+      createSubmissionPendingRef.current = false;
+    },
+  });
   const updateMutation = useMutation({
     mutationFn: updateHrdJob,
     onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
-      setEditJob(null)
-      toast.success("Lowongan berhasil diperbarui.")
+      queryClient.setQueryData(["hrd-dashboard"], payload);
+      setEditJob(null);
+      toast.success("Lowongan berhasil diperbarui.");
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal diperbarui."
-      )
+        error instanceof Error ? error.message : "Lowongan gagal diperbarui.",
+      );
     },
-  })
+  });
   const deleteMutation = useMutation({
     mutationFn: deleteHrdJob,
     onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
-      toast.success("Lowongan berhasil dihapus.")
+      queryClient.setQueryData(["hrd-dashboard"], payload);
+      toast.success("Lowongan berhasil dihapus.");
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal dihapus."
-      )
+        error instanceof Error ? error.message : "Lowongan gagal dihapus.",
+      );
     },
-  })
+  });
 
   React.useEffect(() => {
     if (!editJob) {
-      return
+      return;
     }
 
-    setEditTitle(editJob.title)
-    setEditDescription(editJob.description)
-    setEditSkills(editJob.skills.join(", "))
-    setEditMinYears(String(editJob.minYears))
-    setEditStatus(normalizeStatus(editJob.status))
-  }, [editJob])
+    setEditTitle(editJob.title);
+    setEditDescription(editJob.description);
+    setEditSkills(editJob.skills.join(", "));
+    setEditMinYears(String(editJob.minYears));
+    setEditStatus(normalizeStatus(editJob.status));
+  }, [editJob]);
 
   function handleDelete(job: HrdJobRecord) {
     if (!confirm(`Hapus lowongan "${job.title}" di ${job.company}?`)) {
-      return
+      return;
     }
 
-    deleteMutation.mutate({ id: job.id })
+    deleteMutation.mutate({ id: job.id });
+  }
+
+  function resetCreateForm() {
+    setCreateTitle("");
+    setCreateDescription("");
+    setCreateSkills("");
+    setCreateMinYears("0");
+  }
+
+  function handleCreateOpenChange(open: boolean) {
+    setCreateOpen(open);
+
+    if (!open) {
+      resetCreateForm();
+    }
+  }
+
+  function handleSubmitCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!createTitle.trim()) {
+      toast.info("Judul lowongan wajib diisi.");
+      return;
+    }
+
+    const minYears = Number(createMinYears);
+
+    if (!Number.isFinite(minYears) || minYears < 0) {
+      toast.info("Minimum pengalaman tidak valid.");
+      return;
+    }
+
+    setCreateOpen(false);
+    setConfirmCreateOpen(true);
+  }
+
+  function handleConfirmCreate(status: "active" | "draft") {
+    if (createSubmissionPendingRef.current) {
+      return;
+    }
+
+    createSubmissionPendingRef.current = true;
+    createMutation.mutate({
+      description: createDescription.trim(),
+      minYears: Math.round(Number(createMinYears)),
+      skills: parseSkills(createSkills),
+      status,
+      title: createTitle.trim(),
+    });
   }
 
   function handleSubmitEdit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!editJob) {
-      return
+      return;
     }
 
-    const title = editTitle.trim()
-    const minYears = Number(editMinYears)
+    const title = editTitle.trim();
+    const minYears = Number(editMinYears);
 
     if (!title) {
-      toast.info("Judul lowongan wajib diisi.")
-      return
+      toast.info("Judul lowongan wajib diisi.");
+      return;
     }
 
     if (!Number.isFinite(minYears) || minYears < 0) {
-      toast.info("Minimum pengalaman tidak valid.")
-      return
+      toast.info("Minimum pengalaman tidak valid.");
+      return;
     }
 
     updateMutation.mutate({
@@ -154,7 +242,7 @@ export function HrdJobsContainer() {
       skills: parseSkills(editSkills),
       status: editStatus,
       title,
-    })
+    });
   }
 
   const columns: ColumnDef<HrdJobRecord>[] = [
@@ -172,15 +260,15 @@ export function HrdJobsContainer() {
       accessorKey: "minYears",
       header: "Min. Pengalaman",
       cell: ({ row }) => {
-        const years = row.getValue("minYears") as number
-        return `${years} tahun`
+        const years = row.getValue("minYears") as number;
+        return `${years} tahun`;
       },
     },
     {
       accessorKey: "skills",
       header: "Keahlian",
       cell: ({ row }) => {
-        const skills = row.getValue("skills") as string[]
+        const skills = row.getValue("skills") as string[];
         return (
           <div className="flex flex-wrap gap-1">
             {skills.slice(0, 3).map((skill) => (
@@ -194,15 +282,15 @@ export function HrdJobsContainer() {
               </Badge>
             )}
           </div>
-        )
+        );
       },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.getValue("status") as string
-        return <Badge variant={statusVariant(status)}>{status}</Badge>
+        const status = row.getValue("status") as string;
+        return <Badge variant={statusVariant(status)}>{status}</Badge>;
       },
     },
     {
@@ -214,7 +302,7 @@ export function HrdJobsContainer() {
       id: "actions",
       header: "Aksi",
       cell: ({ row }) => {
-        const job = row.original
+        const job = row.original;
         return (
           <div className="flex items-center gap-1">
             <Button
@@ -243,18 +331,24 @@ export function HrdJobsContainer() {
               <TrashIcon className="size-3.5 text-destructive" />
             </Button>
           </div>
-        )
+        );
       },
     },
-  ]
+  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="font-medium text-2xl">Kelola Lowongan</h1>
-        <p className="text-muted-foreground text-sm">
-          Daftar lowongan dari database sesuai akses role Anda.
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-medium text-2xl">Kelola Lowongan</h1>
+          <p className="text-muted-foreground text-sm">
+            Daftar lowongan dari database sesuai akses role Anda.
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <PlusIcon aria-hidden="true" data-icon="inline-start" />
+          Buka Lowongan
+        </Button>
       </div>
       <DataTable
         columns={columns}
@@ -264,6 +358,121 @@ export function HrdJobsContainer() {
         loading={dashboardQuery.isLoading}
         searchPlaceholder="Cari berdasarkan posisi atau perusahaan..."
       />
+
+      <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Buka lowongan</DialogTitle>
+            <DialogDescription>
+              Isi detail lowongan sebelum memilih untuk mempublikasikan atau
+              menyimpannya sebagai draft.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-4" onSubmit={handleSubmitCreate}>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="create-job-title">Posisi</FieldLabel>
+                <Input
+                  aria-label="Posisi baru"
+                  id="create-job-title"
+                  onChange={(event) => setCreateTitle(event.target.value)}
+                  value={createTitle}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="create-job-description">
+                  Deskripsi
+                </FieldLabel>
+                <textarea
+                  aria-label="Deskripsi lowongan baru"
+                  className="min-h-24 rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+                  id="create-job-description"
+                  onChange={(event) => setCreateDescription(event.target.value)}
+                  value={createDescription}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="create-job-skills">Keahlian</FieldLabel>
+                <Input
+                  aria-label="Keahlian lowongan baru"
+                  id="create-job-skills"
+                  onChange={(event) => setCreateSkills(event.target.value)}
+                  placeholder="Contoh: React, TypeScript"
+                  value={createSkills}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="create-job-min-years">
+                  Minimum pengalaman
+                </FieldLabel>
+                <Input
+                  aria-label="Minimum pengalaman lowongan baru"
+                  id="create-job-min-years"
+                  onChange={(event) => setCreateMinYears(event.target.value)}
+                  type="number"
+                  value={createMinYears}
+                />
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button
+                onClick={() => handleCreateOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
+                Batal
+              </Button>
+              <Button type="submit">Lanjutkan</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmCreateOpen}>
+        <DialogContent className="sm:max-w-lg" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi lowongan</DialogTitle>
+            <DialogDescription>
+              Publikasikan lowongan sekarang agar langsung aktif, atau simpan
+              sebagai draft untuk dilanjutkan nanti.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="font-medium">{createTitle.trim()}</p>
+            <p className="mt-1 text-muted-foreground text-sm">
+              Minimum pengalaman {Math.round(Number(createMinYears))} tahun
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={createMutation.isPending}
+              onClick={() => {
+                setConfirmCreateOpen(false);
+                setCreateOpen(true);
+              }}
+              type="button"
+              variant="outline"
+            >
+              Kembali
+            </Button>
+            <Button
+              disabled={createMutation.isPending}
+              onClick={() => handleConfirmCreate("draft")}
+              type="button"
+              variant="secondary"
+            >
+              Simpan sebagai Draft
+            </Button>
+            <Button
+              disabled={createMutation.isPending}
+              onClick={() => handleConfirmCreate("active")}
+              type="button"
+            >
+              Publikasikan Sekarang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(viewJob)}
@@ -395,5 +604,5 @@ export function HrdJobsContainer() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
