@@ -29,6 +29,7 @@ import {
 import { Input } from "@/shared/components/shadcn/ui/input"
 
 type HrdJobStatus = "active" | "closed" | "draft"
+const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
 
 function statusVariant(
   status: string
@@ -78,6 +79,7 @@ export function HrdJobsContainer() {
   const dashboardQuery = useQuery({
     queryFn: fetchHrdDashboard,
     queryKey: ["hrd-dashboard"],
+    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
   })
   const updateMutation = useMutation({
     mutationFn: updateHrdJob,

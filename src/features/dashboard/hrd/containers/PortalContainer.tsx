@@ -32,6 +32,7 @@ import {
 import { Input } from "@/shared/components/shadcn/ui/input"
 
 type HrdJobStatus = "active" | "closed" | "draft"
+const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
 
 function parseSkills(value: string) {
   return value
@@ -51,6 +52,7 @@ export function HrdPortalContainer() {
   const dashboardQuery = useQuery({
     queryFn: fetchHrdDashboard,
     queryKey: ["hrd-dashboard"],
+    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
   })
   const createJobMutation = useMutation({
     mutationFn: createHrdJob,

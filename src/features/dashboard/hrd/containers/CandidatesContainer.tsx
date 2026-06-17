@@ -6,6 +6,8 @@ import type { AnonymousCandidateRecord } from "@/features/platform/types"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 
+const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
+
 const columns: ColumnDef<AnonymousCandidateRecord>[] = [
   {
     accessorKey: "role",
@@ -55,6 +57,7 @@ export function HrdCandidatesContainer() {
   const dashboardQuery = useQuery({
     queryFn: fetchHrdDashboard,
     queryKey: ["hrd-dashboard"],
+    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
   })
 
   return (

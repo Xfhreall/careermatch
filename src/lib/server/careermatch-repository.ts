@@ -9,10 +9,14 @@ import type {
   JobseekerChatbotRole,
 } from "@/features/jobseeker-chatbot/types"
 import type {
-  AnonymousCandidateRecord,
   HrdJobRecord,
   SuperadminSnapshot,
 } from "@/features/platform/types"
+import {
+  buildAnonymousCandidateMatchRows,
+  type CandidateRankingAnalysis,
+  type CandidateRankingJob,
+} from "@/lib/server/hrd-candidate-ranking"
 
 import { ensureSupabaseBucket, getSupabaseAdmin } from "./supabase"
 
@@ -100,7 +104,7 @@ export async function saveAnalysisResult(input: {
   userId: string
 }) {
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("analysis_results")
     .upsert(
       {
@@ -116,14 +120,10 @@ export async function saveAnalysisResult(input: {
       },
       { onConflict: "analysis_id" }
     )
-    .select("id")
-    .single()
 
   if (error) {
     throw new Error(error.message)
   }
-
-  await syncAnonymousCandidateMatches(String(data.id), input.result)
 }
 
 export async function listAnalysisHistory(userId: string) {
@@ -298,14 +298,7 @@ export async function appendChatbotMessage(input: {
 export async function getHrdDashboard(user: SessionUser, role: AccessRole) {
   const companyId =
     role === "superadmin" ? undefined : await resolveCompanyId(user)
-  const jobs = await listHrdJobs({ companyId })
-
-  return {
-    anonymousCandidates: await listAnonymousCandidates({
-      jobIds: jobs.map((job) => job.id),
-    }),
-    jobs,
-  }
+  return buildAnonymousCandidateDashboard({ companyId })
 }
 
 export async function createHrdJob(
@@ -405,9 +398,9 @@ export async function deleteHrdJob(
 }
 
 export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
-  const [jobs, users, approvals, analyses, scoring, models, settings, audit] =
+  const dashboard = await buildAnonymousCandidateDashboard()
+  const [users, approvals, analyses, scoring, models, settings, audit] =
     await Promise.all([
-      listHrdJobs(),
       selectRows("users", "id, name, email, role, status"),
       selectRows(
         "hrd_approval_requests",
@@ -422,6 +415,7 @@ export async function getSuperadminSnapshot(): Promise<SuperadminSnapshot> {
         orderBy: "created_at",
       }),
     ])
+  const jobs = dashboard.jobs
 
   return {
     auditEvents: audit.map((row) => [
@@ -853,14 +847,10 @@ async function listHrdJobs(options?: {
   }
 
   const companyIds = [...new Set((jobs ?? []).map((job) => job.company_id))]
-  const jobIds = (jobs ?? []).map((job) => job.id)
-  const [companies, candidateCounts] = await Promise.all([
-    fetchCompanies(companyIds),
-    fetchCandidateCounts(jobIds),
-  ])
+  const companies = await fetchCompanies(companyIds)
 
   return (jobs ?? []).map((job) => ({
-    candidates: candidateCounts.get(String(job.id)) ?? 0,
+    candidates: 0,
     company: companies.get(String(job.company_id)) ?? "CareerMatch Partner",
     description: String(job.description ?? ""),
     embedding: titleCase(String(job.embedding_status ?? "pending")),
@@ -872,81 +862,76 @@ async function listHrdJobs(options?: {
   }))
 }
 
-async function listAnonymousCandidates(options?: {
-  jobIds?: string[]
-}): Promise<AnonymousCandidateRecord[]> {
-  if (options?.jobIds && options.jobIds.length === 0) {
-    return []
+async function buildAnonymousCandidateDashboard(options?: {
+  companyId?: string
+}) {
+  const jobs = await listHrdJobs(options)
+  const rows = buildAnonymousCandidateMatchRows({
+    analyses: await listCandidateRankingAnalyses(),
+    jobs: jobs.map(toCandidateRankingJob),
+  })
+  const candidateCounts = countCandidateRows(rows)
+
+  return {
+    anonymousCandidates: rows.slice(0, 20).map((row) => ({
+      candidate: row.candidate_code,
+      role: row.role_title,
+      score: `${Math.round(row.match_score)}%`,
+      skills: row.matched_skills.join(", "),
+    })),
+    jobs: jobs.map((job) => ({
+      ...job,
+      candidates: candidateCounts.get(job.id) ?? 0,
+    })),
   }
-
-  const supabase = getSupabaseAdmin()
-  let query = supabase
-    .from("anonymous_candidate_matches")
-    .select("candidate_code, role_title, match_score, matched_skills")
-    .order("match_score", { ascending: false })
-    .limit(20)
-
-  if (options?.jobIds) {
-    query = query.in("job_posting_id", options.jobIds)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return (data ?? []).map((row) => ({
-    candidate: String(row.candidate_code),
-    role: String(row.role_title),
-    score: `${Math.round(Number(row.match_score ?? 0))}%`,
-    skills: Array.isArray(row.matched_skills)
-      ? row.matched_skills.join(", ")
-      : "",
-  }))
 }
 
-async function syncAnonymousCandidateMatches(
-  resultId: string,
-  result: NormalizedAnalysisResponse
-) {
+async function listCandidateRankingAnalyses(): Promise<CandidateRankingAnalysis[]> {
   const supabase = getSupabaseAdmin()
-  const jobs = await listHrdJobs()
-  const rows = result.jobMatches
-    .slice(0, 8)
-    .map((match, index) => {
-      const job = jobs.find(
-        (item) =>
-          item.title.toLowerCase() === match.jobTitle.toLowerCase() ||
-          item.id === match.jobId
-      )
-
-      if (!job) {
-        return null
-      }
-
-      return {
-        analysis_result_id: resultId,
-        candidate_code: `Candidate ${result.analysisId.slice(0, 10)}-${index + 1}`,
-        job_posting_id: job.id,
-        match_score: match.compatibilityScore ?? 0,
-        matched_skills: match.matchedSkills,
-        role_title: match.jobTitle,
-      }
-    })
-    .filter((row): row is NonNullable<typeof row> => row !== null)
-
-  if (rows.length === 0) {
-    return
-  }
-
-  const { error } = await supabase
-    .from("anonymous_candidate_matches")
-    .upsert(rows, { onConflict: "job_posting_id,candidate_code" })
+  const { data, error } = await supabase
+    .from("analysis_results")
+    .select("id, analysis_id, jobseeker_id, response_payload, created_at")
+    .order("created_at", { ascending: false })
 
   if (error) {
     throw new Error(error.message)
   }
+
+  return (data ?? []).map((row) => {
+    const responsePayload =
+      typeof row.response_payload === "object" && row.response_payload !== null
+        ? (row.response_payload as Partial<NormalizedAnalysisResponse>)
+        : null
+
+    return {
+      analysisId: String(row.analysis_id),
+      candidateProfile: responsePayload?.candidateProfile,
+      createdAt: String(row.created_at),
+      id: String(row.id),
+      jobseekerId: String(row.jobseeker_id),
+    }
+  })
+}
+
+function toCandidateRankingJob(job: HrdJobRecord): CandidateRankingJob {
+  return {
+    id: job.id,
+    minExperienceYears: job.minYears,
+    requiredSkills: job.skills,
+    title: job.title,
+  }
+}
+
+function countCandidateRows(
+  rows: ReturnType<typeof buildAnonymousCandidateMatchRows>
+) {
+  const counts = new Map<string, number>()
+
+  for (const row of rows) {
+    counts.set(row.job_posting_id, (counts.get(row.job_posting_id) ?? 0) + 1)
+  }
+
+  return counts
 }
 
 async function assertCanAccessJob(
@@ -1056,32 +1041,6 @@ async function fetchCompanies(companyIds: unknown[]) {
   }
 
   return new Map((data ?? []).map((row) => [String(row.id), String(row.name)]))
-}
-
-async function fetchCandidateCounts(jobIds: unknown[]) {
-  const supabase = getSupabaseAdmin()
-
-  if (jobIds.length === 0) {
-    return new Map<string, number>()
-  }
-
-  const { data, error } = await supabase
-    .from("anonymous_candidate_matches")
-    .select("job_posting_id")
-    .in("job_posting_id", jobIds)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  const counts = new Map<string, number>()
-
-  for (const row of data ?? []) {
-    const id = String(row.job_posting_id)
-    counts.set(id, (counts.get(id) ?? 0) + 1)
-  }
-
-  return counts
 }
 
 function collectSkillGaps(result: NormalizedAnalysisResponse) {
