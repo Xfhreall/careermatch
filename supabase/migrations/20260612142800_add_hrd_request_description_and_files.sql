@@ -1,8 +1,8 @@
 -- Add description and supporting file columns to hrd_approval_requests
 alter table public.hrd_approval_requests
-add column description text,
-add column supporting_file_path text,
-add column supporting_file_name text;
+add column if not exists description text,
+add column if not exists supporting_file_path text,
+add column if not exists supporting_file_name text;
 
 -- Create storage bucket for HRD registration documents
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

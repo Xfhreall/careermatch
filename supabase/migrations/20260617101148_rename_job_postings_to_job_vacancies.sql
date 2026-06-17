@@ -9,11 +9,11 @@ create table public.job_vacancies (
   created_at timestamp with time zone null default CURRENT_TIMESTAMP,
   content text null,
   metadata jsonb null,
-  embedding public.vector null,
+  embedding extensions.vector(1536) null,
   constraint job_vacancies_pkey primary key (id)
 ) TABLESPACE pg_default;
 
-create index IF not exists job_vacancies_embedding_idx on public.job_vacancies using ivfflat (embedding vector_cosine_ops)
+create index IF not exists job_vacancies_embedding_idx on public.job_vacancies using ivfflat (embedding extensions.vector_cosine_ops)
 with
   (lists = '100') TABLESPACE pg_default;
 
