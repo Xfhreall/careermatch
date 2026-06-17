@@ -13,7 +13,6 @@ export const Route = createFileRoute("/hrd/candidates")({
 function HrdCandidatesPage() {
   return (
     <DashboardLayout
-      role="hrd"
       sidebarItems={getNavigationItems("hrd")}
       allowedRoles={["hrd", "superadmin"]}
     >

@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router"
 import { normalizeAnalysisResponse } from "@/features/cv-analysis/normalize"
 import { validateCvFile } from "@/features/cv-analysis/validators"
 import { requireRole } from "@/lib/server/auth-session"
+import { jsonError } from "@/lib/server/http"
 import {
   createAnalysisJob,
   markAnalysisJobStatus,
   saveAnalysisResult,
   uploadCvToStorage,
-} from "@/lib/server/careermatch-repository"
-import { jsonError } from "@/lib/server/http"
+} from "@/shared/repository/careermatch/action"
 
 const DEFAULT_N8N_WEBHOOK_URL =
   "https://pmhardika.app.n8n.cloud/webhook-test/ai-interview-feedback"

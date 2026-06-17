@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form"
 import {
   keepPreviousData,
   useMutation,
@@ -21,15 +22,9 @@ import {
 import * as React from "react"
 import { toast } from "sonner"
 
-import { useUserQuery } from "@/features/auth/user-query"
-import { fetchAnalysisHistory } from "@/features/cv-analysis/api-client"
+import { useUserQuery } from "@/features/auth/hooks/use-user-query"
 import { SafeMarkdown } from "@/features/cv-analysis/components/SafeMarkdown"
 import type { AnalysisHistoryItem } from "@/features/cv-analysis/types"
-import {
-  fetchJobseekerChatbotSessions,
-  type JobseekerChatbotSessionResponse,
-  sendJobseekerChatbotMessage,
-} from "@/features/jobseeker-chatbot/api-client"
 import type {
   JobseekerChatbotConversationSummary,
   JobseekerChatbotMessage,
@@ -39,6 +34,12 @@ import { authClient } from "@/lib/auth-client"
 import { Button, buttonVariants } from "@/shared/components/shadcn/ui/button"
 import { Skeleton } from "@/shared/components/shadcn/ui/skeleton"
 import { cn } from "@/shared/lib/utils"
+import { fetchAnalysisHistory } from "@/shared/repository/cv-analysis/action"
+import {
+  fetchJobseekerChatbotSessions,
+  type JobseekerChatbotSessionResponse,
+  sendJobseekerChatbotMessage,
+} from "@/shared/repository/jobseeker-chatbot/action"
 
 type LocalMessage = JobseekerChatbotMessage & {
   optimistic?: boolean
@@ -85,7 +86,6 @@ export function ChatbotContainer({
   const [activeConversationId, setActiveConversationId] = React.useState<
     string | undefined
   >()
-  const [draft, setDraft] = React.useState(initialPrompt)
   const [messages, setMessages] = React.useState<LocalMessage[]>([])
   const initialSearchRef = React.useRef({
     analysisId: initialAnalysisId,
@@ -187,6 +187,44 @@ export function ChatbotContainer({
       toast.error(content)
     },
   })
+  const chatForm = useForm({
+    defaultValues: {
+      message: initialPrompt,
+    },
+    onSubmit: async ({ formApi, value }) => {
+      const message = value.message.trim()
+
+      if (!message || mutation.isPending) {
+        return
+      }
+
+      if (mode === "analysis" && !selectedAnalysisId) {
+        toast.error("Pilih hasil analisis CV terlebih dahulu.")
+        return
+      }
+
+      const userMessage = {
+        ...createLocalMessage("user", message),
+        optimistic: true,
+      }
+      const pendingMessage = createLocalMessage(
+        "assistant",
+        "CareerMatch sedang memproses jawaban.",
+        true
+      )
+
+      setMessages((current) => current.concat(userMessage, pendingMessage))
+      formApi.setFieldValue("message", "")
+      mutation.mutate({
+        analysisId: mode === "analysis" ? selectedAnalysisId : undefined,
+        conversationId: activeConversationId,
+        history: [],
+        message,
+        mode,
+      })
+    },
+  })
+  const draft = chatForm.state.values.message
   const isConversationLoading = Boolean(
     activeConversationId && sessionsQuery.isFetching && !mutation.isPending
   )
@@ -211,8 +249,8 @@ export function ChatbotContainer({
     setMessages([])
     setMode(initialAnalysisId ? "analysis" : initialMode)
     setSelectedAnalysisId(initialAnalysisId)
-    setDraft(initialPrompt)
-  }, [initialAnalysisId, initialMode, initialPrompt])
+    chatForm.setFieldValue("message", initialPrompt)
+  }, [chatForm, initialAnalysisId, initialMode, initialPrompt])
 
   React.useEffect(() => {
     if (activeConversation) {
@@ -253,7 +291,7 @@ export function ChatbotContainer({
   function handleNewChat() {
     setActiveConversationId(undefined)
     setMessages([])
-    setDraft("")
+    chatForm.setFieldValue("message", "")
     setMode("direct")
     setSelectedAnalysisId(undefined)
     setSidebarOpen(false)
@@ -268,36 +306,7 @@ export function ChatbotContainer({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const message = draft.trim()
-
-    if (!message || mutation.isPending) {
-      return
-    }
-
-    if (mode === "analysis" && !selectedAnalysisId) {
-      toast.error("Pilih hasil analisis CV terlebih dahulu.")
-      return
-    }
-
-    const userMessage = {
-      ...createLocalMessage("user", message),
-      optimistic: true,
-    }
-    const pendingMessage = createLocalMessage(
-      "assistant",
-      "CareerMatch sedang memproses jawaban.",
-      true
-    )
-
-    setMessages((current) => current.concat(userMessage, pendingMessage))
-    setDraft("")
-    mutation.mutate({
-      analysisId: mode === "analysis" ? selectedAnalysisId : undefined,
-      conversationId: activeConversationId,
-      history: [],
-      message,
-      mode,
-    })
+    void chatForm.handleSubmit()
   }
 
   return (
@@ -349,7 +358,9 @@ export function ChatbotContainer({
                 ) : (
                   <EmptyChat
                     mode={mode}
-                    onPrompt={(prompt) => setDraft(prompt)}
+                    onPrompt={(prompt) =>
+                      chatForm.setFieldValue("message", prompt)
+                    }
                   />
                 )
               ) : (
@@ -371,18 +382,22 @@ export function ChatbotContainer({
             </div>
           </section>
 
-          <ChatComposer
-            disabled={
-              mutation.isPending ||
-              !draft.trim() ||
-              (mode === "analysis" && !selectedAnalysisId)
-            }
-            draft={draft}
-            loading={mutation.isPending}
-            onChange={setDraft}
-            onSubmit={handleSubmit}
-            textareaRef={textareaRef}
-          />
+          <chatForm.Subscribe selector={(state) => state.values.message}>
+            {(message) => (
+              <ChatComposer
+                disabled={
+                  mutation.isPending ||
+                  !message.trim() ||
+                  (mode === "analysis" && !selectedAnalysisId)
+                }
+                draft={message}
+                loading={mutation.isPending}
+                onChange={(value) => chatForm.setFieldValue("message", value)}
+                onSubmit={handleSubmit}
+                textareaRef={textareaRef}
+              />
+            )}
+          </chatForm.Subscribe>
         </main>
       </div>
     </div>

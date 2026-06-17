@@ -13,7 +13,6 @@ export const Route = createFileRoute("/hrd/portal")({
 function HrdPortalPage() {
   return (
     <DashboardLayout
-      role="hrd"
       sidebarItems={getNavigationItems("hrd")}
       allowedRoles={["hrd", "superadmin"]}
     >

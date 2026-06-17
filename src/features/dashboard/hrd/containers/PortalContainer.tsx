@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   DownloadIcon,
@@ -10,10 +11,9 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import {
-  createHrdJob,
-  fetchHrdDashboard,
-  refreshHrdEmbeddings,
-} from "@/features/platform/api-client"
+  type HrdJobStatus,
+  parseSkills,
+} from "@/features/dashboard/hrd/lib/job-utils"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import {
@@ -30,25 +30,17 @@ import {
   FieldLabel,
 } from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
+import {
+  createHrdJob,
+  fetchHrdDashboard,
+  refreshHrdEmbeddings,
+} from "@/shared/repository/platform/action"
 
-type HrdJobStatus = "active" | "closed" | "draft"
 const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
-
-function parseSkills(value: string) {
-  return value
-    .split(",")
-    .map((skill) => skill.trim())
-    .filter(Boolean)
-}
 
 export function HrdPortalContainer() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = React.useState(false)
-  const [title, setTitle] = React.useState("")
-  const [description, setDescription] = React.useState("")
-  const [skills, setSkills] = React.useState("")
-  const [minYears, setMinYears] = React.useState("0")
-  const [status, setStatus] = React.useState<HrdJobStatus>("active")
   const dashboardQuery = useQuery({
     queryFn: fetchHrdDashboard,
     queryKey: ["hrd-dashboard"],
@@ -59,11 +51,6 @@ export function HrdPortalContainer() {
     onSuccess: (payload) => {
       queryClient.setQueryData(["hrd-dashboard"], payload)
       setCreateOpen(false)
-      setTitle("")
-      setDescription("")
-      setSkills("")
-      setMinYears("0")
-      setStatus("active")
       toast.success("Lowongan berhasil dibuat.")
     },
     onError: (error) => {
@@ -80,29 +67,49 @@ export function HrdPortalContainer() {
   })
   const jobs = dashboardQuery.data?.jobs ?? []
   const anonymousCandidates = dashboardQuery.data?.anonymousCandidates ?? []
+  const createForm = useForm({
+    defaultValues: {
+      description: "",
+      minYears: "0",
+      skills: "",
+      status: "active" as HrdJobStatus,
+      title: "",
+    },
+    onSubmit: async ({ value }) => {
+      const normalizedTitle = value.title.trim()
+      const normalizedMinYears = Number(value.minYears)
+
+      if (!normalizedTitle) {
+        toast.info("Judul lowongan wajib diisi.")
+        return
+      }
+
+      if (!Number.isFinite(normalizedMinYears) || normalizedMinYears < 0) {
+        toast.info("Minimum pengalaman tidak valid.")
+        return
+      }
+
+      createJobMutation.mutate({
+        description: value.description.trim(),
+        minYears: Math.round(normalizedMinYears),
+        skills: parseSkills(value.skills),
+        status: value.status,
+        title: normalizedTitle,
+      })
+    },
+  })
 
   function handleNewJob(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const normalizedTitle = title.trim()
-    const normalizedMinYears = Number(minYears)
+    void createForm.handleSubmit()
+  }
 
-    if (!normalizedTitle) {
-      toast.info("Judul lowongan wajib diisi.")
-      return
+  function handleCreateOpenChange(open: boolean) {
+    setCreateOpen(open)
+
+    if (!open) {
+      createForm.reset()
     }
-
-    if (!Number.isFinite(normalizedMinYears) || normalizedMinYears < 0) {
-      toast.info("Minimum pengalaman tidak valid.")
-      return
-    }
-
-    createJobMutation.mutate({
-      description: description.trim(),
-      minYears: Math.round(normalizedMinYears),
-      skills: parseSkills(skills),
-      status,
-      title: normalizedTitle,
-    })
   }
 
   function handleRefreshEmbeddings() {
@@ -120,7 +127,7 @@ export function HrdPortalContainer() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = "careermatch-anonymous-candidates.json"
+    anchor.download = "careermatch-matched-candidates.json"
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -205,16 +212,24 @@ export function HrdPortalContainer() {
 
       <aside className="rounded-lg border border-border bg-card">
         <div className="border-border border-b p-6">
-          <p className="text-muted-foreground text-sm">Anonymous matches</p>
+          <p className="text-muted-foreground text-sm">Matched candidates</p>
           <h2 className="font-medium text-3xl">Candidate ranking</h2>
         </div>
         <div className="divide-y divide-border">
           {anonymousCandidates.length > 0 ? (
             anonymousCandidates.map((candidate) => (
-              <div className="p-5" key={candidate.candidate}>
+              <div
+                className="p-5"
+                key={`${candidate.candidate}-${candidate.role}`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-medium">{candidate.candidate}</p>
+                    <p className="font-medium">
+                      {candidate.name || candidate.candidate}
+                    </p>
+                    <p className="mt-1 text-muted-foreground text-sm">
+                      {candidate.email}
+                    </p>
                     <p className="mt-1 text-muted-foreground text-sm">
                       {candidate.role}
                     </p>
@@ -235,7 +250,7 @@ export function HrdPortalContainer() {
           )}
         </div>
       </aside>
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Buat lowongan</DialogTitle>
@@ -247,61 +262,89 @@ export function HrdPortalContainer() {
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="new-job-title">Posisi</FieldLabel>
-                <Input
-                  id="new-job-title"
-                  onChange={(event) => setTitle(event.target.value)}
-                  value={title}
-                />
+                <createForm.Field name="title">
+                  {(field) => (
+                    <Input
+                      id="new-job-title"
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      value={field.state.value}
+                    />
+                  )}
+                </createForm.Field>
               </Field>
               <Field>
                 <FieldLabel htmlFor="new-job-description">Deskripsi</FieldLabel>
-                <textarea
-                  className="min-h-24 rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
-                  id="new-job-description"
-                  onChange={(event) => setDescription(event.target.value)}
-                  value={description}
-                />
+                <createForm.Field name="description">
+                  {(field) => (
+                    <textarea
+                      className="min-h-24 rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+                      id="new-job-description"
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      value={field.state.value}
+                    />
+                  )}
+                </createForm.Field>
               </Field>
               <Field>
                 <FieldLabel htmlFor="new-job-skills">Keahlian</FieldLabel>
-                <Input
-                  id="new-job-skills"
-                  onChange={(event) => setSkills(event.target.value)}
-                  value={skills}
-                />
+                <createForm.Field name="skills">
+                  {(field) => (
+                    <Input
+                      id="new-job-skills"
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      value={field.state.value}
+                    />
+                  )}
+                </createForm.Field>
               </Field>
               <Field>
                 <FieldLabel htmlFor="new-job-min-years">
                   Minimum pengalaman
                 </FieldLabel>
-                <Input
-                  id="new-job-min-years"
-                  min={0}
-                  onChange={(event) => setMinYears(event.target.value)}
-                  type="number"
-                  value={minYears}
-                />
+                <createForm.Field name="minYears">
+                  {(field) => (
+                    <Input
+                      id="new-job-min-years"
+                      min={0}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      type="number"
+                      value={field.state.value}
+                    />
+                  )}
+                </createForm.Field>
               </Field>
               <Field>
                 <FieldLabel htmlFor="new-job-status">Status</FieldLabel>
-                <select
-                  className="h-10 rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
-                  id="new-job-status"
-                  onChange={(event) =>
-                    setStatus(event.target.value as HrdJobStatus)
-                  }
-                  value={status}
-                >
-                  <option value="active">Active</option>
-                  <option value="draft">Draft</option>
-                  <option value="closed">Closed</option>
-                </select>
+                <createForm.Field name="status">
+                  {(field) => (
+                    <select
+                      className="h-10 rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+                      id="new-job-status"
+                      onChange={(event) =>
+                        field.handleChange(event.target.value as HrdJobStatus)
+                      }
+                      value={field.state.value}
+                    >
+                      <option value="active">Active</option>
+                      <option value="draft">Draft</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  )}
+                </createForm.Field>
               </Field>
             </FieldGroup>
             <DialogFooter>
               <Button
                 disabled={createJobMutation.isPending}
-                onClick={() => setCreateOpen(false)}
+                onClick={() => handleCreateOpenChange(false)}
                 type="button"
                 variant="outline"
               >

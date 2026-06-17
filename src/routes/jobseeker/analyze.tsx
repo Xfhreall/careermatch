@@ -12,10 +12,7 @@ export const Route = createFileRoute("/jobseeker/analyze")({
 
 function AnalyzePage() {
   return (
-    <DashboardLayout
-      role="jobseeker"
-      sidebarItems={getNavigationItems("jobseeker")}
-    >
+    <DashboardLayout sidebarItems={getNavigationItems("jobseeker")}>
       <JobseekerAnalyzeContainer />
     </DashboardLayout>
   )

@@ -25,7 +25,7 @@ import {
 import { useRef } from "react"
 import { toast } from "sonner"
 
-import { RoleRedirectGate } from "@/features/auth/AuthNavButton"
+import { RoleRedirectGate } from "@/features/auth/components/AuthNavButton"
 import { AppNavbar } from "@/features/platform/components/AppNavbar"
 import {
   BriefcaseBusinessIcon,
@@ -282,7 +282,7 @@ function LandingPage() {
 
       {/* Hero */}
       <section
-        className="paper-grid pt-16 relative overflow-hidden border-border border-b bg-[#faf5ed]"
+        className="paper-grid relative overflow-hidden border-border border-b bg-[#faf5ed] pt-16"
         id="home"
       >
         <motion.div

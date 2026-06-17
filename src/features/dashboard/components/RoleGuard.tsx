@@ -1,12 +1,11 @@
 import { useNavigate } from "@tanstack/react-router"
 import * as React from "react"
-
-import { authClient } from "@/lib/auth-client"
 import {
   type AppRole,
   getDashboardPathForRole,
   getUserRole,
-} from "@/features/auth/role-routing"
+} from "@/features/auth/lib/role-routing"
+import { authClient } from "@/lib/auth-client"
 
 export function RoleAccessGuard({ allowedRoles }: { allowedRoles: AppRole[] }) {
   const navigate = useNavigate()

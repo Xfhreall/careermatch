@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { requireRole } from "@/lib/server/auth-session"
+import { jsonError } from "@/lib/server/http"
 import {
   getSuperadminSnapshot,
   updateModelConfig,
   updatePlatformSetting,
   updateScoringConfig,
-} from "@/lib/server/careermatch-repository"
-import { jsonError } from "@/lib/server/http"
+} from "@/shared/repository/careermatch/action"
 
 export const Route = createFileRoute("/api/superadmin/model-config")({
   server: {

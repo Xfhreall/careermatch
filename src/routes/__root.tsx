@@ -3,7 +3,7 @@ import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools"
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
-import { SessionUserCacheSync } from "@/features/auth/SessionUserCacheSync"
+import { SessionUserCacheSync } from "@/features/auth/components/SessionUserCacheSync"
 import { LenisProvider } from "@/shared/components/LenisProvider"
 import { Toaster } from "@/shared/components/shadcn/ui/sonner"
 

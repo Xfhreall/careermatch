@@ -12,10 +12,7 @@ export const Route = createFileRoute("/superadmin/monitoring")({
 
 function SuperadminMonitoringPage() {
   return (
-    <DashboardLayout
-      role="superadmin"
-      sidebarItems={getNavigationItems("superadmin")}
-    >
+    <DashboardLayout sidebarItems={getNavigationItems("superadmin")}>
       <SuperadminMonitoringContainer />
     </DashboardLayout>
   )

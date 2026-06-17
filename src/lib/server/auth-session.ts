@@ -1,7 +1,7 @@
 import {
   getDashboardPathForRole,
   getUserRole,
-} from "@/features/auth/role-routing"
+} from "@/features/auth/lib/role-routing"
 import { withAuth } from "@/lib/auth"
 
 type SessionUser = {

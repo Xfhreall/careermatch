@@ -12,10 +12,7 @@ export const Route = createFileRoute("/jobseeker/history")({
 
 function AnalysisHistoryPage() {
   return (
-    <DashboardLayout
-      role="jobseeker"
-      sidebarItems={getNavigationItems("jobseeker")}
-    >
+    <DashboardLayout sidebarItems={getNavigationItems("jobseeker")}>
       <AnalysisHistoryContainer />
     </DashboardLayout>
   )

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { requireRole } from "@/lib/server/auth-session"
-import { getHrdDashboard } from "@/lib/server/careermatch-repository"
 import { jsonError } from "@/lib/server/http"
+import { getHrdDashboard } from "@/shared/repository/careermatch/action"
 
 export const Route = createFileRoute("/api/hrd/dashboard")({
   server: {

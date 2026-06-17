@@ -8,7 +8,7 @@ import {
 } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 
-import { AuthNavButton } from "@/features/auth/AuthNavButton"
+import { AuthNavButton } from "@/features/auth/components/AuthNavButton"
 import { cn } from "@/shared/lib/utils"
 
 import { BriefcaseBusinessIcon } from "../data"
@@ -260,7 +260,7 @@ export function AppNavbar() {
               })}
             </div>
 
-            <div className="flex items-center gap-2 ml-auto md:ml-0">
+            <div className="ml-auto flex items-center gap-2 md:ml-0">
               <div className="hidden sm:block">
                 <AuthNavButton />
               </div>

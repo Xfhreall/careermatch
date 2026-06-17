@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { requireRole } from "@/lib/server/auth-session"
+import { jsonError } from "@/lib/server/http"
 import {
   getSuperadminSnapshot,
   updateHrdApproval,
-} from "@/lib/server/careermatch-repository"
-import { jsonError } from "@/lib/server/http"
+} from "@/shared/repository/careermatch/action"
 
 export const Route = createFileRoute("/api/superadmin/hrd-approval")({
   server: {

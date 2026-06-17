@@ -2,8 +2,11 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { MenuIcon } from "lucide-react"
 import { useMemo, useState } from "react"
-import { type AppRole, getUserRole } from "@/features/auth/role-routing"
-import { userQueryKey, useUserQuery } from "@/features/auth/user-query"
+import {
+  userQueryKey,
+  useUserQuery,
+} from "@/features/auth/hooks/use-user-query"
+import { type AppRole, getUserRole } from "@/features/auth/lib/role-routing"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import { cn } from "@/shared/lib/utils"
@@ -14,7 +17,7 @@ import { RoleAccessGuard } from "./RoleGuard"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  role: AppRole
+  role?: AppRole
   sidebarItems: SidebarItem[]
   allowedRoles?: AppRole[]
   user?: {
@@ -43,7 +46,8 @@ export function DashboardLayout({
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const sessionRole = getUserRole(session.data?.user)
   const cachedUser = userQuery.data
-  const effectiveAllowedRoles = allowedRoles ?? [role]
+  const effectiveAllowedRoles =
+    allowedRoles ?? (role ? [role] : ["jobseeker", "hrd", "superadmin"])
   const canRenderDashboard =
     !session.isPending &&
     hasSession &&
@@ -125,11 +129,11 @@ export function DashboardLayout({
 
       <div
         className={cn(
-          "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] print:!ml-0",
+          "print:!ml-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
           sidebarCollapsed ? "md:ml-16" : "md:ml-64"
         )}
       >
-        <header className="print:hidden sticky top-0 z-30 flex h-14 items-center border-border border-b bg-card/95 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center border-border border-b bg-card/95 px-4 backdrop-blur md:px-6 print:hidden">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center">
               <Button

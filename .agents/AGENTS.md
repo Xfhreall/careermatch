@@ -2,56 +2,44 @@
 
 ## Project Structure & Module Organization
 
-This is a TanStack Start React app using TypeScript, Vite, Tailwind CSS, and
-shadcn/ui. Application code lives in `src/`. File routes are under
-`src/routes/`, with `src/routes/__root.tsx` defining the root document shell and
-`src/routes/index.tsx` defining the home route. Shared utilities belong in
-`src/shared/lib/`; shared UI components belong in `src/shared/components/`,
-including generated shadcn components in `src/shared/components/shadcn/ui/`.
-Static assets live in `public/`; app-local assets can live in `src/`, such as
-`src/logo.svg`. Treat `src/routeTree.gen.ts` as generated router output.
+CareerMatch is a TanStack Start React application with server routes and Supabase-backed data. Application code lives in `src/`. Feature modules are under `src/features/`; each feature should expose `components/`, `containers/`, `hooks/`, and `lib/` when applicable. Route files live in `src/routes/`. Shared UI and utilities live in `src/shared/`. Feature API clients and repository logic live in `src/shared/repository/<feature>/` split into `dto.ts`, `query.ts`, and `action.ts`. Tests live in `src/shared/tests/`. Static assets belong in `public/`. Database migrations and seed data are in `supabase/migrations/` and `supabase/seed.sql`.
 
 ## Build, Test, and Development Commands
 
-Use Bun because this repo includes `bun.lock`.
+Use Bun for project scripts:
 
-- `bun install`: install dependencies.
-- `bun run dev`: start Vite dev server on port `3000`.
-- `bun run build`: create a production build.
-- `bun run preview`: serve the built app locally.
-- `bun run test`: run Vitest once.
-- `bun run lint`: run Biome checks.
-- `bun run format`: apply Biome formatting.
-- `bun run typecheck`: run TypeScript without emitting files.
+- `bun run dev` builds and runs the Alchemy/Cloudflare local worker flow.
+- `bun run dev:vite` starts the Vite dev server on port `3000`.
+- `bun run build` creates the production Vite build.
+- `bun run test` runs Vitest tests.
+- `bun run typecheck` runs `tsc --noEmit`.
+- `bun run lint` runs Biome checks.
+- `bun run format` formats files with Biome.
+- `bun run db:push` applies Supabase migrations.
+- `bun run db:seed` seeds local Supabase data.
 
 ## Coding Style & Naming Conventions
 
-Biome is the formatter and linter. Use 2-space indentation, LF line endings,
-double quotes, trailing commas where valid in ES5, and no required semicolons.
-Keep imports organized through Biome. Tailwind classes must remain sorted; Biome
-enforces `useSortedClasses`. Prefer the `@/` alias for imports from `src/`.
-Name React components in PascalCase, hooks with `use...`, and route files using
-TanStack Router file-route conventions.
+Write TypeScript and React using existing repository patterns. Prefer feature-local modules in `src/features/<feature>/` and server-only logic in `src/lib/server/`. Use `PascalCase` for React components, `camelCase` for variables/functions, and descriptive filenames such as `JobsContainer.tsx` or `careermatch-repository.ts`.
+
+Biome is the formatter and linter. Keep imports organized and avoid unrelated formatting churn. Follow strict TypeScript settings; avoid `any` unless the boundary is intentionally untyped and narrowly contained.
 
 ## Testing Guidelines
 
-Tests run with Vitest and React Testing Library. No test files are present yet;
-add focused tests next to the code they cover as `*.test.ts` or `*.test.tsx`.
-Prefer user-visible behavior tests for components and small unit tests for
-shared utilities. Run `bun run test`, `bun run typecheck`, and `bun run lint`
-before opening a PR.
+Use Vitest for unit and integration-style tests. Use Testing Library for React component behavior. Keep all tests in `src/shared/tests/` and name them after the subject, for example `hrd-candidate-ranking.test.ts`. Run focused tests first, for example:
+
+```bash
+bun run test -- src/shared/tests/hrd-candidate-ranking.test.ts
+```
+
+Then run `bun run typecheck` and relevant broader checks before handing off.
 
 ## Commit & Pull Request Guidelines
 
-Local Git history is unavailable in this workspace, so no existing convention
-can be inferred. Use concise Conventional Commit subjects, for example
-`feat: add candidate dashboard` or `fix: handle empty matches`. PRs should
-include a short summary, linked issue when relevant, screenshots for UI changes,
-and the verification commands you ran.
+Recent history uses conventional-style commits such as `feat: ...`, `fix: ...`, `refactor: ...`, and `chore: ...`. Keep commits scoped and imperative.
 
-## Configuration Notes
+Pull requests should include a short description, linked issue or task when available, screenshots for UI changes, migration notes for Supabase changes, and verification commands run. Call out any known lint baseline failures separately from new issues.
 
-shadcn/ui aliases are configured in `components.json`; generated components
-should follow those paths. Global styling and design tokens live in
-`src/styles.css`. Keep secrets out of the repo and document required environment
-variables when adding integrations.
+## Security & Configuration Tips
+
+Do not commit `.env`, `.dev.vars`, `.alchemy`, `wrangler.toml`, Supabase service keys, or Cloudflare credentials. Read required environment variables from `.env.example` and keep server-only secrets inside server routes or `src/lib/server/`.

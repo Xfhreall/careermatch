@@ -10,7 +10,7 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react"
-import type { AppRole } from "@/features/auth/role-routing"
+import type { AppRole } from "@/features/auth/lib/role-routing"
 
 export interface SidebarItem {
   label: string

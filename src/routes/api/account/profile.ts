@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { getUserRole } from "@/features/auth/role-routing"
+import { getUserRole } from "@/features/auth/lib/role-routing"
 import { withAuth } from "@/lib/auth"
+import { requireAuthenticatedUser } from "@/lib/server/auth-session"
+import { jsonError } from "@/lib/server/http"
 import {
   removeAvatarFromStorageByPublicUrl,
   uploadAvatarToStorage,
   validateAvatarFile,
-} from "@/lib/server/account-repository"
-import { requireAuthenticatedUser } from "@/lib/server/auth-session"
-import { jsonError } from "@/lib/server/http"
+} from "@/shared/repository/account/action"
 
 export const Route = createFileRoute("/api/account/profile")({
   server: {

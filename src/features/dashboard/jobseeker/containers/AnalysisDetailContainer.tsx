@@ -2,11 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { motion, useReducedMotion } from "framer-motion"
 import { AlertCircleIcon, FileSearchIcon, RefreshCwIcon } from "lucide-react"
-
-import {
-  deleteAnalysisResultRequest,
-  fetchAnalysisResult,
-} from "@/features/cv-analysis/api-client"
 import { AnalysisResultView } from "@/features/cv-analysis/components/AnalysisResultView"
 import {
   Alert,
@@ -29,6 +24,10 @@ import {
   EmptyTitle,
 } from "@/shared/components/shadcn/ui/empty"
 import { Skeleton } from "@/shared/components/shadcn/ui/skeleton"
+import {
+  deleteAnalysisResultRequest,
+  fetchAnalysisResult,
+} from "@/shared/repository/cv-analysis/action"
 
 interface AnalysisDetailContainerProps {
   analysisId: string

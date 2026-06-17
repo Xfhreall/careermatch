@@ -31,8 +31,11 @@ import {
 } from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
 import { cn } from "@/shared/lib/utils"
+import {
+  type AnalyzeCvInput,
+  analyzeCvRequest,
+} from "@/shared/repository/cv-analysis/action"
 import { getFileExtension, trackCareerMatchEvent } from "../analytics"
-import { type AnalyzeCvInput, analyzeCvRequest } from "../api-client"
 import type { NormalizedAnalysisResponse } from "../types"
 import { formatFileSize, validateCvFile } from "../validators"
 

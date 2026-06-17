@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { requireRole } from "@/lib/server/auth-session"
-import { listAnalysisHistory } from "@/lib/server/careermatch-repository"
 import { jsonError } from "@/lib/server/http"
+import { listAnalysisHistory } from "@/shared/repository/careermatch/action"
 
 export const Route = createFileRoute("/api/cv/history")({
   server: {

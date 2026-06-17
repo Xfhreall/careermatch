@@ -6,7 +6,7 @@ import {
   type AppRole,
   getDashboardPathForRole,
   getUserRole,
-} from "@/features/auth/role-routing"
+} from "@/features/auth/lib/role-routing"
 import { withAuth } from "@/lib/auth"
 
 const getRouteAccessSession = createServerFn({ method: "GET" }).handler(

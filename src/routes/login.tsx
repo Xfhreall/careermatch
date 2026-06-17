@@ -10,11 +10,11 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
+import { setUserCache } from "@/features/auth/hooks/use-user-query"
 import {
   getDashboardPathForRole,
   getUserRole,
-} from "@/features/auth/role-routing"
-import { setUserCache } from "@/features/auth/user-query"
+} from "@/features/auth/lib/role-routing"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import {

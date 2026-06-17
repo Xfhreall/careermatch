@@ -3,12 +3,6 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { CheckIcon, EyeIcon, XIcon } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
-
-import {
-  fetchSuperadminSnapshot,
-  updateHrdApprovalRequest,
-} from "@/features/platform/api-client"
-import type { SuperadminSnapshot } from "@/features/platform/types"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
@@ -19,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/shadcn/ui/dialog"
+import {
+  fetchSuperadminSnapshot,
+  updateHrdApprovalRequest,
+} from "@/shared/repository/platform/action"
+import type { SuperadminSnapshot } from "@/shared/repository/platform/dto"
 
 type ApprovalItem = SuperadminSnapshot["hrdApprovalQueue"][number]
 

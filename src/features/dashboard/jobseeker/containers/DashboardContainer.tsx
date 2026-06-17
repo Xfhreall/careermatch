@@ -7,11 +7,10 @@ import {
   HistoryIcon,
   TrendingUpIcon,
 } from "lucide-react"
-
-import { fetchAnalysisHistory } from "@/features/cv-analysis/api-client"
 import { PlatformHeader } from "@/features/platform/components/PlatformHeader"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
+import { fetchAnalysisHistory } from "@/shared/repository/cv-analysis/action"
 
 export function JobseekerDashboardContainer() {
   const historyQuery = useQuery({

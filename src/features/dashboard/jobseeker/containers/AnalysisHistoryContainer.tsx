@@ -3,15 +3,14 @@ import { Link } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DownloadIcon, EyeIcon, TrashIcon } from "lucide-react"
 import { toast } from "sonner"
-
-import {
-  deleteAnalysisResultRequest,
-  fetchAnalysisHistory,
-} from "@/features/cv-analysis/api-client"
 import type { AnalysisHistoryItem } from "@/features/cv-analysis/types"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
+import {
+  deleteAnalysisResultRequest,
+  fetchAnalysisHistory,
+} from "@/shared/repository/cv-analysis/action"
 
 function formatScore(score?: number): string {
   if (score == null) return "-"
@@ -120,7 +119,7 @@ function getColumns(
 
 async function handleExport(item: AnalysisHistoryItem) {
   const { fetchAnalysisResult } = await import(
-    "@/features/cv-analysis/api-client"
+    "@/shared/repository/cv-analysis/action"
   )
   const result = await fetchAnalysisResult(item.analysisId)
   if (!result) return

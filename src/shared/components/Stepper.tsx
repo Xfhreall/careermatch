@@ -19,7 +19,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
   const shouldReduceMotion = useReducedMotion()
 
   return (
-    <ol className={cn("flex flex-col", className)} role="list">
+    <ol className={cn("flex flex-col", className)}>
       {steps.map((step, index) => {
         const state: "completed" | "active" | "pending" =
           index < activeStep
@@ -38,7 +38,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
               <div
                 aria-hidden="true"
                 className={cn(
-                  "absolute top-9 left-4 -translate-x-1/2 h-[calc(100%-2rem)] w-px transition-colors duration-300",
+                  "absolute top-9 left-4 h-[calc(100%-2rem)] w-px -translate-x-1/2 transition-colors duration-300",
                   state === "completed" ? "bg-primary" : "bg-border"
                 )}
               />
@@ -46,7 +46,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
 
             <span
               className={cn(
-                "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-300",
+                "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 font-semibold text-sm transition-all duration-300",
                 state === "completed" &&
                   "border-primary bg-primary text-primary-foreground",
                 state === "active" &&
@@ -75,7 +75,7 @@ export function Stepper({ activeStep, className, steps }: StepperProps) {
 
             <motion.div
               animate={{ opacity: 1, x: 0 }}
-              className="flex flex-col gap-0.5 pb-8 pt-1"
+              className="flex flex-col gap-0.5 pt-1 pb-8"
               initial={
                 shouldReduceMotion
                   ? false

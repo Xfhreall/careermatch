@@ -12,14 +12,13 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react"
-
-import {
-  fetchSuperadminSnapshot,
-  updateHrdApprovalRequest,
-} from "@/features/platform/api-client"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import { Progress } from "@/shared/components/shadcn/ui/progress"
+import {
+  fetchSuperadminSnapshot,
+  updateHrdApprovalRequest,
+} from "@/shared/repository/platform/action"
 
 const monitoringIcons = [
   UsersIcon,

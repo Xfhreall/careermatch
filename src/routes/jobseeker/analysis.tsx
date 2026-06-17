@@ -1,10 +1,10 @@
-import { useEffect } from "react"
 import {
   createFileRoute,
   Outlet,
   useLocation,
   useNavigate,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 
 import { requireRole } from "@/features/dashboard/lib/auth-middleware"
 

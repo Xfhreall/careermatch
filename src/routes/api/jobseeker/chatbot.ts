@@ -8,6 +8,7 @@ import {
 } from "@/features/jobseeker-chatbot/chatbot-guard"
 import type { JobseekerChatbotMode } from "@/features/jobseeker-chatbot/types"
 import { requireRole } from "@/lib/server/auth-session"
+import { jsonError } from "@/lib/server/http"
 import {
   appendChatbotMessage,
   createChatbotConversation,
@@ -15,8 +16,7 @@ import {
   listChatbotConversations,
   loadAnalysisResult,
   loadChatbotConversation,
-} from "@/lib/server/careermatch-repository"
-import { jsonError } from "@/lib/server/http"
+} from "@/shared/repository/careermatch/action"
 
 export const Route = createFileRoute("/api/jobseeker/chatbot")({
   server: {
