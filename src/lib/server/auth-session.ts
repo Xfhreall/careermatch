@@ -19,10 +19,12 @@ export type RequestSession = {
 }
 
 export async function getRequestSession(request: Request) {
-  return (await withAuth((auth) =>
-    auth.api.getSession({
-      headers: request.headers,
-    })
+  return (await withAuth(
+    (auth) =>
+      auth.api.getSession({
+        headers: request.headers,
+      }),
+    request
   )) as RequestSession | null
 }
 

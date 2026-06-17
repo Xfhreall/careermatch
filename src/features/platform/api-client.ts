@@ -1,3 +1,4 @@
+import { fetchApp } from "@/lib/app-fetch"
 import type {
   AnonymousCandidateRecord,
   HrdJobRecord,
@@ -163,7 +164,7 @@ export async function submitHrdRequest(input: {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init)
+  const response = await fetchApp(url, init)
   const payload = await readPayload(response)
 
   if (!response.ok) {

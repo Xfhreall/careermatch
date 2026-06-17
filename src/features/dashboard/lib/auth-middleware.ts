@@ -12,10 +12,12 @@ import { withAuth } from "@/lib/auth"
 const getRouteAccessSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest()
-    const session = await withAuth((auth) =>
-      auth.api.getSession({
-        headers: request.headers,
-      })
+    const session = await withAuth(
+      (auth) =>
+        auth.api.getSession({
+          headers: request.headers,
+        }),
+      request
     )
 
     if (!session?.user) {
