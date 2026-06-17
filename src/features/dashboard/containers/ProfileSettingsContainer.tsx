@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { UploadIcon } from "lucide-react"
 import { type ChangeEvent, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -10,6 +10,10 @@ import {
   useUserQuery,
 } from "@/features/auth/hooks/use-user-query"
 import { getUserRole } from "@/features/auth/lib/role-routing"
+import {
+  useHrdRequestStatusQuery,
+  useSubmitHrdRequestMutation,
+} from "@/features/dashboard/hooks/use-hrd-registration"
 import { authClient } from "@/lib/auth-client"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
@@ -24,10 +28,6 @@ import {
   changeAccountPassword,
   updateAccountProfile,
 } from "@/shared/repository/account/query"
-import {
-  fetchHrdRequestStatus,
-  submitHrdRequest,
-} from "@/shared/repository/platform/action"
 
 function getRoleLabel(role: ReturnType<typeof getUserRole>) {
   if (role === "superadmin") return "Superadmin"
@@ -46,24 +46,13 @@ export function ProfileSettingsContainer() {
   const role = getUserRole(currentUser ?? session.data?.user)
   const roleLabel = getRoleLabel(role)
 
-  const requestStatusQuery = useQuery({
-    queryKey: ["hrd-request-status"],
-    queryFn: fetchHrdRequestStatus,
+  const requestStatusQuery = useHrdRequestStatusQuery({
     enabled: role === "jobseeker",
   })
 
-  const submitHrdMutation = useMutation({
-    mutationFn: submitHrdRequest,
+  const submitHrdMutation = useSubmitHrdRequestMutation({
     onSuccess: () => {
       void requestStatusQuery.refetch()
-      toast.success("Permintaan registrasi HRD berhasil diajukan.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Gagal mengajukan permintaan HRD."
-      )
     },
   })
 

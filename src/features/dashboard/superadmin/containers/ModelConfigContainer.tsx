@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query"
-
 import {
   CHATBOT_GUARD_SETTING_KEY,
   ChatbotGuardSetting,
   ModelConfigRow,
   ScoringConfigRow,
 } from "@/features/dashboard/superadmin/components/model-config-rows"
+import { useSuperadminSnapshotQuery } from "@/features/dashboard/superadmin/hooks/use-superadmin-dashboard"
 import {
   Table,
   TableBody,
@@ -13,13 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/shadcn/ui/table"
-import { fetchSuperadminSnapshot } from "@/shared/repository/platform/action"
 
 export function SuperadminModelConfigContainer() {
-  const snapshotQuery = useQuery({
-    queryFn: fetchSuperadminSnapshot,
-    queryKey: ["superadmin-snapshot"],
-  })
+  const snapshotQuery = useSuperadminSnapshotQuery()
 
   const modelConfig = snapshotQuery.data?.modelConfig ?? []
   const scoringWeights = snapshotQuery.data?.scoringWeights ?? []

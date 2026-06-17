@@ -1,10 +1,3 @@
-import { useForm } from "@tanstack/react-form"
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
@@ -20,31 +13,20 @@ import {
   XIcon,
 } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
 
-import { useUserQuery } from "@/features/auth/hooks/use-user-query"
 import { SafeMarkdown } from "@/features/cv-analysis/components/SafeMarkdown"
 import type { AnalysisHistoryItem } from "@/features/cv-analysis/types"
+import {
+  type LocalMessage,
+  useJobseekerChatbot,
+} from "@/features/jobseeker-chatbot/hooks/use-chatbot"
 import type {
   JobseekerChatbotConversationSummary,
-  JobseekerChatbotMessage,
   JobseekerChatbotMode,
 } from "@/features/jobseeker-chatbot/types"
-import { authClient } from "@/lib/auth-client"
 import { Button, buttonVariants } from "@/shared/components/shadcn/ui/button"
 import { Skeleton } from "@/shared/components/shadcn/ui/skeleton"
 import { cn } from "@/shared/lib/utils"
-import { fetchAnalysisHistory } from "@/shared/repository/cv-analysis/action"
-import {
-  fetchJobseekerChatbotSessions,
-  type JobseekerChatbotSessionResponse,
-  sendJobseekerChatbotMessage,
-} from "@/shared/repository/jobseeker-chatbot/action"
-
-type LocalMessage = JobseekerChatbotMessage & {
-  optimistic?: boolean
-  pending?: boolean
-}
 
 type ChatbotContainerProps = {
   initialAnalysisId?: string
@@ -65,210 +47,47 @@ const QUICK_PROMPTS = {
   ],
 } satisfies Record<JobseekerChatbotMode, string[]>
 
-const chatQueryKey = ["jobseeker-chatbot-sessions"] as const
-
 export function ChatbotContainer({
   initialAnalysisId,
   initialMode = "direct",
   initialPrompt = "",
 }: ChatbotContainerProps = {}) {
-  const queryClient = useQueryClient()
   const shouldReduceMotion = useReducedMotion()
-  const session = authClient.useSession()
-  const userQuery = useUserQuery({ enabled: Boolean(session.data?.user) })
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
-  const [mode, setMode] = React.useState<JobseekerChatbotMode>(
-    initialAnalysisId ? "analysis" : initialMode
-  )
-  const [selectedAnalysisId, setSelectedAnalysisId] = React.useState<
-    string | undefined
-  >(initialAnalysisId)
-  const [activeConversationId, setActiveConversationId] = React.useState<
-    string | undefined
-  >()
-  const [messages, setMessages] = React.useState<LocalMessage[]>([])
-  const initialSearchRef = React.useRef({
-    analysisId: initialAnalysisId,
-    mode: initialMode,
-    prompt: initialPrompt,
+
+  const {
+    mode,
+    setMode,
+    selectedAnalysisId,
+    setSelectedAnalysisId,
+    activeConversationId,
+    messages,
+    conversations,
+    activeConversation,
+    selectedAnalysis,
+    user,
+    mutation,
+    chatForm,
+    draft,
+    isConversationLoading,
+    historyQuery,
+    sessionsQuery,
+    handleNewChat,
+    handleSelectConversation,
+    handleSubmit,
+  } = useJobseekerChatbot({
+    initialAnalysisId,
+    initialMode,
+    initialPrompt,
   })
+
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
-  const historyQuery = useQuery({
-    queryFn: fetchAnalysisHistory,
-    queryKey: ["analysis-history"],
-  })
-  const sessionsQuery = useQuery({
-    placeholderData: keepPreviousData,
-    queryFn: () => fetchJobseekerChatbotSessions(activeConversationId),
-    queryKey: [...chatQueryKey, activeConversationId],
-  })
-  const selectedAnalysis = historyQuery.data?.find(
-    (item) => item.analysisId === selectedAnalysisId
-  )
-  const activeConversation =
-    sessionsQuery.data?.activeConversation?.id === activeConversationId
-      ? sessionsQuery.data?.activeConversation
-      : null
-  const conversations = sessionsQuery.data?.conversations ?? []
-  const user = userQuery.data ?? session.data?.user
+
   const transition = {
     duration: shouldReduceMotion ? 0 : 0.2,
     ease: [0.16, 1, 0.3, 1],
   } as const
-  const mutation = useMutation({
-    mutationFn: sendJobseekerChatbotMessage,
-    onSuccess: async (response) => {
-      setActiveConversationId(response.conversationId)
-      setMessages((current) =>
-        settleChatbotMessages(
-          current,
-          response.userMessage,
-          response.assistantMessage
-        )
-      )
-      const activeData = {
-        activeConversation: {
-          analysisId: mode === "analysis" ? selectedAnalysisId : undefined,
-          createdAt: response.userMessage.createdAt,
-          id: response.conversationId,
-          messages: settleChatbotMessages(
-            messages,
-            response.userMessage,
-            response.assistantMessage
-          ),
-          mode,
-          title: response.conversationTitle,
-          updatedAt: response.assistantMessage.createdAt,
-        },
-        conversations: response.conversations,
-      } satisfies JobseekerChatbotSessionResponse
-
-      queryClient.setQueryData<JobseekerChatbotSessionResponse>(
-        [...chatQueryKey, response.conversationId],
-        activeData
-      )
-      queryClient.setQueryData<JobseekerChatbotSessionResponse>(
-        [...chatQueryKey, activeConversationId],
-        (current) =>
-          current
-            ? {
-                ...current,
-                conversations: response.conversations,
-              }
-            : current
-      )
-      queryClient.setQueryData<JobseekerChatbotSessionResponse>(
-        [...chatQueryKey, undefined],
-        (current) => ({
-          activeConversation: current?.activeConversation ?? null,
-          conversations: response.conversations,
-        })
-      )
-      await queryClient.invalidateQueries({
-        queryKey: chatQueryKey,
-        refetchType: "inactive",
-      })
-    },
-    onError: (error) => {
-      const content =
-        error instanceof Error
-          ? error.message
-          : "Chatbot belum bisa merespons saat ini."
-
-      setMessages((current) =>
-        current
-          .filter((message) => !message.pending)
-          .map((message) =>
-            message.optimistic ? { ...message, optimistic: false } : message
-          )
-          .concat(createLocalMessage("assistant", content))
-      )
-      toast.error(content)
-    },
-  })
-  const chatForm = useForm({
-    defaultValues: {
-      message: initialPrompt,
-    },
-    onSubmit: async ({ formApi, value }) => {
-      const message = value.message.trim()
-
-      if (!message || mutation.isPending) {
-        return
-      }
-
-      if (mode === "analysis" && !selectedAnalysisId) {
-        toast.error("Pilih hasil analisis CV terlebih dahulu.")
-        return
-      }
-
-      const userMessage = {
-        ...createLocalMessage("user", message),
-        optimistic: true,
-      }
-      const pendingMessage = createLocalMessage(
-        "assistant",
-        "CareerMatch sedang memproses jawaban.",
-        true
-      )
-
-      setMessages((current) => current.concat(userMessage, pendingMessage))
-      formApi.setFieldValue("message", "")
-      mutation.mutate({
-        analysisId: mode === "analysis" ? selectedAnalysisId : undefined,
-        conversationId: activeConversationId,
-        history: [],
-        message,
-        mode,
-      })
-    },
-  })
-  const draft = chatForm.state.values.message
-  const isConversationLoading = Boolean(
-    activeConversationId && sessionsQuery.isFetching && !mutation.isPending
-  )
-
-  React.useEffect(() => {
-    const currentSearch = {
-      analysisId: initialAnalysisId,
-      mode: initialMode,
-      prompt: initialPrompt,
-    }
-
-    if (
-      initialSearchRef.current.analysisId === currentSearch.analysisId &&
-      initialSearchRef.current.mode === currentSearch.mode &&
-      initialSearchRef.current.prompt === currentSearch.prompt
-    ) {
-      return
-    }
-
-    initialSearchRef.current = currentSearch
-    setActiveConversationId(undefined)
-    setMessages([])
-    setMode(initialAnalysisId ? "analysis" : initialMode)
-    setSelectedAnalysisId(initialAnalysisId)
-    chatForm.setFieldValue("message", initialPrompt)
-  }, [chatForm, initialAnalysisId, initialMode, initialPrompt])
-
-  React.useEffect(() => {
-    if (activeConversation) {
-      setMode(activeConversation.mode)
-      setSelectedAnalysisId(activeConversation.analysisId)
-      setMessages(activeConversation.messages)
-    }
-  }, [activeConversation])
-
-  React.useEffect(() => {
-    if (
-      mode === "analysis" &&
-      !selectedAnalysisId &&
-      historyQuery.data?.[0]?.analysisId
-    ) {
-      setSelectedAnalysisId(historyQuery.data[0].analysisId)
-    }
-  }, [historyQuery.data, mode, selectedAnalysisId])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: chat viewport must follow appended messages.
   React.useEffect(() => {
@@ -288,25 +107,14 @@ export function ChatbotContainer({
     )}px`
   }, [draft])
 
-  function handleNewChat() {
-    setActiveConversationId(undefined)
-    setMessages([])
-    chatForm.setFieldValue("message", "")
-    setMode("direct")
-    setSelectedAnalysisId(undefined)
+  const handleNewChatWithSidebar = () => {
+    handleNewChat()
     setSidebarOpen(false)
   }
 
-  function handleSelectConversation(conversationId: string) {
-    setActiveConversationId(conversationId)
-    setMessages([])
+  const handleSelectConversationWithSidebar = (conversationId: string) => {
+    handleSelectConversation(conversationId)
     setSidebarOpen(false)
-  }
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    void chatForm.handleSubmit()
   }
 
   return (
@@ -329,9 +137,9 @@ export function ChatbotContainer({
           mode={mode}
           onClose={() => setSidebarOpen(false)}
           onModeChange={setMode}
-          onNewChat={handleNewChat}
+          onNewChat={handleNewChatWithSidebar}
           onSelectAnalysis={setSelectedAnalysisId}
-          onSelectConversation={handleSelectConversation}
+          onSelectConversation={handleSelectConversationWithSidebar}
           open={sidebarOpen}
           selectedAnalysisId={selectedAnalysisId}
           sessionsLoading={
@@ -923,50 +731,6 @@ function LoadingDots() {
       ))}
     </span>
   )
-}
-
-function createLocalMessage(
-  role: JobseekerChatbotMessage["role"],
-  content: string,
-  pending = false
-): LocalMessage {
-  return {
-    content,
-    createdAt: new Date().toISOString(),
-    id: crypto.randomUUID(),
-    pending,
-    role,
-  }
-}
-
-function settleChatbotMessages(
-  current: LocalMessage[],
-  userMessage: JobseekerChatbotMessage,
-  assistantMessage: JobseekerChatbotMessage
-) {
-  const settled = current.filter((message) => !message.pending)
-  let optimisticUserIndex = -1
-
-  for (let index = settled.length - 1; index >= 0; index -= 1) {
-    const message = settled[index]
-
-    if (message?.optimistic && message.role === "user") {
-      optimisticUserIndex = index
-      break
-    }
-  }
-
-  if (optimisticUserIndex >= 0) {
-    settled[optimisticUserIndex] = userMessage
-  } else if (!settled.some((message) => message.id === userMessage.id)) {
-    settled.push(userMessage)
-  }
-
-  if (!settled.some((message) => message.id === assistantMessage.id)) {
-    settled.push(assistantMessage)
-  }
-
-  return settled
 }
 
 function formatDate(value: string) {

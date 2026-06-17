@@ -1,10 +1,15 @@
 import { useForm } from "@tanstack/react-form"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { PlusIcon, SaveIcon } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { createHrdJobColumns } from "@/features/dashboard/hrd/components/job-columns"
+import {
+  useCreateHrdJobMutation,
+  useDeleteHrdJobMutation,
+  useHrdDashboardQuery,
+  useUpdateHrdJobMutation,
+} from "@/features/dashboard/hrd/hooks/use-hrd-dashboard"
 import {
   type HrdJobStatus,
   normalizeStatus,
@@ -28,78 +33,35 @@ import {
   FieldLabel,
 } from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
-import {
-  createHrdJob,
-  deleteHrdJob,
-  fetchHrdDashboard,
-  updateHrdJob,
-} from "@/shared/repository/platform/action"
 import type { HrdJobRecord } from "@/shared/repository/platform/dto"
 
-const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
-
 export function HrdJobsContainer() {
-  const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = React.useState(false)
   const [confirmCreateOpen, setConfirmCreateOpen] = React.useState(false)
   const createSubmissionPendingRef = React.useRef(false)
   const [viewJob, setViewJob] = React.useState<HrdJobRecord | null>(null)
   const [editJob, setEditJob] = React.useState<HrdJobRecord | null>(null)
-  const dashboardQuery = useQuery({
-    queryFn: fetchHrdDashboard,
-    queryKey: ["hrd-dashboard"],
-    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
-  })
-  const createMutation = useMutation({
-    mutationFn: createHrdJob,
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["hrd-dashboard"] })
-    },
-    onSuccess: (payload, variables) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
+
+  const dashboardQuery = useHrdDashboardQuery()
+
+  const createMutation = useCreateHrdJobMutation({
+    onSuccess: () => {
       setConfirmCreateOpen(false)
       setCreateOpen(false)
       resetCreateForm()
-      toast.success(
-        variables.status === "active"
-          ? "Lowongan berhasil dipublikasikan."
-          : "Lowongan berhasil disimpan sebagai draft."
-      )
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal dibuat."
-      )
     },
     onSettled: () => {
       createSubmissionPendingRef.current = false
     },
   })
-  const updateMutation = useMutation({
-    mutationFn: updateHrdJob,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
+
+  const updateMutation = useUpdateHrdJobMutation({
+    onSuccess: () => {
       setEditJob(null)
-      toast.success("Lowongan berhasil diperbarui.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal diperbarui."
-      )
     },
   })
-  const deleteMutation = useMutation({
-    mutationFn: deleteHrdJob,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
-      toast.success("Lowongan berhasil dihapus.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal dihapus."
-      )
-    },
-  })
+
+  const deleteMutation = useDeleteHrdJobMutation()
   const createForm = useForm({
     defaultValues: {
       description: "",

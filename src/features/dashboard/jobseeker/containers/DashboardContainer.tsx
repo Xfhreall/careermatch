@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   BriefcaseBusinessIcon,
@@ -7,16 +6,13 @@ import {
   HistoryIcon,
   TrendingUpIcon,
 } from "lucide-react"
+import { useAnalysisHistoryQuery } from "@/features/dashboard/jobseeker/hooks/use-analysis-history"
 import { PlatformHeader } from "@/features/platform/components/PlatformHeader"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
-import { fetchAnalysisHistory } from "@/shared/repository/cv-analysis/action"
 
 export function JobseekerDashboardContainer() {
-  const historyQuery = useQuery({
-    queryFn: fetchAnalysisHistory,
-    queryKey: ["analysis-history"],
-  })
+  const historyQuery = useAnalysisHistoryQuery()
   const historyItems = historyQuery.data ?? []
   const latestHistory = historyItems[0]
   const totalMatches = historyItems.reduce(

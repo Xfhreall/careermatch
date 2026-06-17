@@ -1,17 +1,9 @@
-import { useQuery } from "@tanstack/react-query"
-
 import { hrdCandidateColumns } from "@/features/dashboard/hrd/components/candidate-columns"
+import { useHrdDashboardQuery } from "@/features/dashboard/hrd/hooks/use-hrd-dashboard"
 import { DataTable } from "@/shared/components/DataTable"
-import { fetchHrdDashboard } from "@/shared/repository/platform/action"
-
-const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
 
 export function HrdCandidatesContainer() {
-  const dashboardQuery = useQuery({
-    queryFn: fetchHrdDashboard,
-    queryKey: ["hrd-dashboard"],
-    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
-  })
+  const dashboardQuery = useHrdDashboardQuery()
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

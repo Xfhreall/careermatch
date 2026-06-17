@@ -1,5 +1,4 @@
 import { useForm } from "@tanstack/react-form"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   DownloadIcon,
   PlusIcon,
@@ -9,7 +8,11 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
-
+import {
+  useCreateHrdJobMutation,
+  useHrdDashboardQuery,
+  useRefreshHrdEmbeddingsMutation,
+} from "@/features/dashboard/hrd/hooks/use-hrd-dashboard"
 import {
   type HrdJobStatus,
   parseSkills,
@@ -30,41 +33,16 @@ import {
   FieldLabel,
 } from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
-import {
-  createHrdJob,
-  fetchHrdDashboard,
-  refreshHrdEmbeddings,
-} from "@/shared/repository/platform/action"
-
-const HRD_DASHBOARD_REFETCH_INTERVAL_MS = 30_000
 
 export function HrdPortalContainer() {
-  const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = React.useState(false)
-  const dashboardQuery = useQuery({
-    queryFn: fetchHrdDashboard,
-    queryKey: ["hrd-dashboard"],
-    refetchInterval: HRD_DASHBOARD_REFETCH_INTERVAL_MS,
-  })
-  const createJobMutation = useMutation({
-    mutationFn: createHrdJob,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
+  const dashboardQuery = useHrdDashboardQuery()
+  const createJobMutation = useCreateHrdJobMutation({
+    onSuccess: () => {
       setCreateOpen(false)
-      toast.success("Lowongan berhasil dibuat.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Lowongan gagal dibuat."
-      )
     },
   })
-  const refreshMutation = useMutation({
-    mutationFn: refreshHrdEmbeddings,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["hrd-dashboard"], payload)
-    },
-  })
+  const refreshMutation = useRefreshHrdEmbeddingsMutation()
   const jobs = dashboardQuery.data?.jobs ?? []
   const anonymousCandidates = dashboardQuery.data?.anonymousCandidates ?? []
   const createForm = useForm({

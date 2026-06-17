@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ActivityIcon,
   CheckCircle2Icon,
@@ -12,13 +11,13 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react"
+import {
+  useSuperadminSnapshotQuery,
+  useUpdateHrdApprovalMutation,
+} from "@/features/dashboard/superadmin/hooks/use-superadmin-dashboard"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
 import { Progress } from "@/shared/components/shadcn/ui/progress"
-import {
-  fetchSuperadminSnapshot,
-  updateHrdApprovalRequest,
-} from "@/shared/repository/platform/action"
 
 const monitoringIcons = [
   UsersIcon,
@@ -94,17 +93,8 @@ function getStatusBadge(status: string) {
 }
 
 export function SuperadminMonitoringContainer() {
-  const queryClient = useQueryClient()
-  const snapshotQuery = useQuery({
-    queryFn: fetchSuperadminSnapshot,
-    queryKey: ["superadmin-snapshot"],
-  })
-  const approvalMutation = useMutation({
-    mutationFn: updateHrdApprovalRequest,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["superadmin-snapshot"], payload)
-    },
-  })
+  const snapshotQuery = useSuperadminSnapshotQuery()
+  const approvalMutation = useUpdateHrdApprovalMutation()
   const snapshot = snapshotQuery.data
   const approvals = snapshot?.hrdApprovalQueue ?? []
   const auditEvents = snapshot?.auditEvents ?? []

@@ -1,8 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { motion, useReducedMotion } from "framer-motion"
 import { AlertCircleIcon, FileSearchIcon, RefreshCwIcon } from "lucide-react"
 import { AnalysisResultView } from "@/features/cv-analysis/components/AnalysisResultView"
+import {
+  useAnalysisDetailQuery,
+  useDeleteAnalysisDetailMutation,
+} from "@/features/dashboard/jobseeker/hooks/use-analysis-detail"
 import {
   Alert,
   AlertDescription,
@@ -24,10 +27,6 @@ import {
   EmptyTitle,
 } from "@/shared/components/shadcn/ui/empty"
 import { Skeleton } from "@/shared/components/shadcn/ui/skeleton"
-import {
-  deleteAnalysisResultRequest,
-  fetchAnalysisResult,
-} from "@/shared/repository/cv-analysis/action"
 
 interface AnalysisDetailContainerProps {
   analysisId: string
@@ -37,23 +36,16 @@ export function JobseekerAnalysisDetailContainer({
   analysisId,
 }: AnalysisDetailContainerProps) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const shouldReduceMotion = useReducedMotion()
-  const resultQuery = useQuery({
-    queryFn: () => fetchAnalysisResult(analysisId),
-    queryKey: ["analysis-result", analysisId],
-  })
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteAnalysisResultRequest(analysisId),
+  const resultQuery = useAnalysisDetailQuery(analysisId)
+  const deleteMutation = useDeleteAnalysisDetailMutation(analysisId, {
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["analysis-history"] })
+      void navigate({ to: "/jobseeker/dashboard" })
     },
   })
 
   function handleReset() {
-    void deleteMutation.mutateAsync().finally(() => {
-      void navigate({ to: "/jobseeker/dashboard" })
-    })
+    void deleteMutation.mutateAsync()
   }
 
   return (

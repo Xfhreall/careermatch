@@ -1,16 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DownloadIcon, EyeIcon, TrashIcon } from "lucide-react"
-import { toast } from "sonner"
 import type { AnalysisHistoryItem } from "@/features/cv-analysis/types"
+import {
+  useAnalysisHistoryQuery,
+  useDeleteAnalysisResultMutation,
+} from "@/features/dashboard/jobseeker/hooks/use-analysis-history"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
-import {
-  deleteAnalysisResultRequest,
-  fetchAnalysisHistory,
-} from "@/shared/repository/cv-analysis/action"
 
 function formatScore(score?: number): string {
   if (score == null) return "-"
@@ -151,23 +149,8 @@ async function handleExport(item: AnalysisHistoryItem) {
 }
 
 export function AnalysisHistoryContainer() {
-  const queryClient = useQueryClient()
-  const historyQuery = useQuery({
-    queryFn: fetchAnalysisHistory,
-    queryKey: ["analysis-history"],
-  })
-  const deleteMutation = useMutation({
-    mutationFn: deleteAnalysisResultRequest,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["analysis-history"] })
-      toast.success("Analisis berhasil dihapus.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Analisis gagal dihapus."
-      )
-    },
-  })
+  const historyQuery = useAnalysisHistoryQuery()
+  const deleteMutation = useDeleteAnalysisResultMutation()
 
   function handleDelete(item: AnalysisHistoryItem) {
     if (!confirm(`Hapus analisis "${item.analysisId}"?`)) {

@@ -1,5 +1,4 @@
 import { useForm } from "@tanstack/react-form"
-import { useMutation } from "@tanstack/react-query"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircleIcon,
@@ -36,6 +35,7 @@ import {
   analyzeCvRequest,
 } from "@/shared/repository/cv-analysis/action"
 import { getFileExtension, trackCareerMatchEvent } from "../analytics"
+import { useAnalyzeCv } from "../hooks/use-analyze-cv"
 import type { NormalizedAnalysisResponse } from "../types"
 import { formatFileSize, validateCvFile } from "../validators"
 
@@ -104,27 +104,13 @@ export function UploadCvForm({
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const shouldReduceMotion = useReducedMotion()
 
-  const mutation = useMutation({
-    mutationFn: analyzeCv,
+  const mutation = useAnalyzeCv({
+    analyzeCv,
     onSuccess: (result) => {
-      toast.success("Analisis CV selesai.")
-      trackCareerMatchEvent("cv_analysis_completed", {
-        job_match_count: result.jobMatches.length,
-        top_score: result.jobMatches[0]?.compatibilityScore ?? null,
-      })
       onAnalysisReady(result)
     },
     onError: (error) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Gagal terhubung ke server. Coba lagi sebentar."
-      setSubmitError(message)
-      toast.error(message)
-      trackCareerMatchEvent("cv_analysis_failed", {
-        stage: "request",
-        error_message: message,
-      })
+      setSubmitError(error.message)
     },
   })
 

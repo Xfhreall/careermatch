@@ -1,8 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
 import { CheckIcon, EyeIcon, XIcon } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
+import {
+  useSuperadminSnapshotQuery,
+  useUpdateHrdApprovalMutation,
+} from "@/features/dashboard/superadmin/hooks/use-superadmin-dashboard"
 import { DataTable } from "@/shared/components/DataTable"
 import { Badge } from "@/shared/components/shadcn/ui/badge"
 import { Button } from "@/shared/components/shadcn/ui/button"
@@ -13,10 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/shadcn/ui/dialog"
-import {
-  fetchSuperadminSnapshot,
-  updateHrdApprovalRequest,
-} from "@/shared/repository/platform/action"
 import type { SuperadminSnapshot } from "@/shared/repository/platform/dto"
 
 type ApprovalItem = SuperadminSnapshot["hrdApprovalQueue"][number]
@@ -37,25 +35,10 @@ function statusVariant(
 }
 
 export function SuperadminApprovalContainer() {
-  const queryClient = useQueryClient()
   const [selectedApproval, setSelectedApproval] =
     React.useState<ApprovalItem | null>(null)
-  const snapshotQuery = useQuery({
-    queryFn: fetchSuperadminSnapshot,
-    queryKey: ["superadmin-snapshot"],
-  })
-  const approvalMutation = useMutation({
-    mutationFn: updateHrdApprovalRequest,
-    onSuccess: (payload) => {
-      queryClient.setQueryData(["superadmin-snapshot"], payload)
-      toast.success("Status approval HRD diperbarui.")
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Approval HRD gagal diproses."
-      )
-    },
-  })
+  const snapshotQuery = useSuperadminSnapshotQuery()
+  const approvalMutation = useUpdateHrdApprovalMutation()
 
   function handleApproval(id: string, status: "Approved" | "Rejected") {
     approvalMutation.mutate({
