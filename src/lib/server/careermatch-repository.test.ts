@@ -19,7 +19,7 @@ describe("getSuperadminSnapshot", () => {
   beforeEach(() => {
     from.mockClear()
     rowsByTable.clear()
-    rowsByTable.set("job_postings", [
+    rowsByTable.set("job_vacancies", [
       createJob("job-1", "active"),
       createJob("job-2", "draft"),
       createJob("job-3", "active"),
@@ -128,15 +128,18 @@ function createQuery(
 
 function createJob(id: string, status: string) {
   return {
-    company_id: "company-1",
+    company_name: "Company One",
     created_at: "2026-06-12T00:00:00.000Z",
-    description: "Job description",
-    embedding_status: "synced",
+    job_description: "Job description",
     id,
-    min_experience_years: 1,
-    required_skills: ["TypeScript"],
-    status,
-    title: `Job ${id}`,
+    requirements: ["TypeScript"],
+    role_name: `Job ${id}`,
+    metadata: {
+      company_id: "company-1",
+      embedding_status: "synced",
+      min_experience_years: 1,
+      status,
+    }
   }
 }
 

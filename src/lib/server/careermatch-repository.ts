@@ -313,15 +313,21 @@ export async function createHrdJob(
 ) {
   const supabase = getSupabaseAdmin()
   const companyId = await resolveCompanyId(user)
-  const { error } = await supabase.from("job_postings").insert({
-    company_id: companyId,
-    created_by: user.id,
-    description: input.description,
-    embedding_status: "pending",
-    min_experience_years: input.minYears,
-    required_skills: input.skills,
-    status: input.status,
-    title: input.title,
+  const companies = await fetchCompanies([companyId])
+  const companyName = companies.get(companyId) ?? "CareerMatch Partner"
+
+  const { error } = await supabase.from("job_vacancies").insert({
+    company_name: companyName,
+    role_name: input.title,
+    job_description: input.description,
+    requirements: input.skills,
+    metadata: {
+      status: input.status,
+      min_experience_years: input.minYears,
+      created_by: user.id,
+      company_id: companyId,
+      embedding_status: "pending",
+    }
   })
 
   if (error) {
@@ -335,19 +341,31 @@ export async function refreshHrdEmbeddings(
 ) {
   const supabase = getSupabaseAdmin()
   let query = supabase
-    .from("job_postings")
-    .update({ embedding_status: "synced" })
-    .eq("status", "active")
+    .from("job_vacancies")
+    .select("id, metadata")
 
   if (role !== "superadmin") {
-    query = query.eq("company_id", await resolveCompanyId(user))
+    query = query.eq("metadata->>company_id", await resolveCompanyId(user))
   }
 
-  const { error } = await query
+  const { data, error } = await query
 
   if (error) {
     throw new Error(error.message)
   }
+
+  for (const job of data ?? []) {
+    const meta = isRecord(job.metadata) ? job.metadata : {}
+    if (meta.status === "active" && meta.embedding_status !== "synced") {
+      await supabase
+        .from("job_vacancies")
+        .update({
+          metadata: { ...meta, embedding_status: "synced" }
+        })
+        .eq("id", String(job.id))
+    }
+  }
+
 }
 
 export async function updateHrdJob(
@@ -365,15 +383,26 @@ export async function updateHrdJob(
   const supabase = getSupabaseAdmin()
   await assertCanAccessJob(input.id, user, role)
 
+  const { data: existing } = await supabase
+    .from("job_vacancies")
+    .select("metadata")
+    .eq("id", input.id)
+    .single()
+
+  const meta = isRecord(existing?.metadata) ? existing.metadata : {}
+
   const { error } = await supabase
-    .from("job_postings")
+    .from("job_vacancies")
     .update({
-      description: input.description,
-      embedding_status: "pending",
-      min_experience_years: input.minYears,
-      required_skills: input.skills,
-      status: input.status,
-      title: input.title,
+      job_description: input.description,
+      requirements: input.skills,
+      role_name: input.title,
+      metadata: {
+        ...meta,
+        embedding_status: "pending",
+        min_experience_years: input.minYears,
+        status: input.status,
+      }
     })
     .eq("id", input.id)
 
@@ -390,7 +419,7 @@ export async function deleteHrdJob(
   const supabase = getSupabaseAdmin()
   await assertCanAccessJob(jobId, user, role)
 
-  const { error } = await supabase.from("job_postings").delete().eq("id", jobId)
+  const { error } = await supabase.from("job_vacancies").delete().eq("id", jobId)
 
   if (error) {
     throw new Error(error.message)
@@ -830,14 +859,14 @@ async function listHrdJobs(options?: {
 }): Promise<HrdJobRecord[]> {
   const supabase = getSupabaseAdmin()
   let query = supabase
-    .from("job_postings")
+    .from("job_vacancies")
     .select(
-      "id, company_id, title, description, required_skills, min_experience_years, status, embedding_status, created_at"
+      "id, company_name, role_name, job_description, requirements, metadata, created_at"
     )
     .order("created_at", { ascending: false })
 
   if (options?.companyId) {
-    query = query.eq("company_id", options.companyId)
+    query = query.eq("metadata->>company_id", options.companyId)
   }
 
   const { data: jobs, error } = await query
@@ -846,20 +875,20 @@ async function listHrdJobs(options?: {
     throw new Error(error.message)
   }
 
-  const companyIds = [...new Set((jobs ?? []).map((job) => job.company_id))]
-  const companies = await fetchCompanies(companyIds)
-
-  return (jobs ?? []).map((job) => ({
-    candidates: 0,
-    company: companies.get(String(job.company_id)) ?? "CareerMatch Partner",
-    description: String(job.description ?? ""),
-    embedding: titleCase(String(job.embedding_status ?? "pending")),
-    id: String(job.id),
-    minYears: Number(job.min_experience_years ?? 0),
-    skills: Array.isArray(job.required_skills) ? job.required_skills : [],
-    status: titleCase(String(job.status ?? "active")),
-    title: String(job.title),
-  }))
+  return (jobs ?? []).map((job) => {
+    const meta = isRecord(job.metadata) ? job.metadata : {}
+    return {
+      candidates: 0,
+      company: String(job.company_name || "CareerMatch Partner"),
+      description: String(job.job_description ?? ""),
+      embedding: titleCase(String(meta.embedding_status ?? "pending")),
+      id: String(job.id),
+      minYears: Number(meta.min_experience_years ?? 0),
+      skills: Array.isArray(job.requirements) ? job.requirements : [],
+      status: titleCase(String(meta.status ?? "active")),
+      title: String(job.role_name),
+    }
+  })
 }
 
 async function buildAnonymousCandidateDashboard(options?: {
@@ -928,7 +957,7 @@ function countCandidateRows(
   const counts = new Map<string, number>()
 
   for (const row of rows) {
-    counts.set(row.job_posting_id, (counts.get(row.job_posting_id) ?? 0) + 1)
+    counts.set(row.job_vacancy_id, (counts.get(row.job_vacancy_id) ?? 0) + 1)
   }
 
   return counts
@@ -941,8 +970,8 @@ async function assertCanAccessJob(
 ) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
-    .from("job_postings")
-    .select("id, company_id")
+    .from("job_vacancies")
+    .select("id, metadata")
     .eq("id", jobId)
     .maybeSingle()
 
@@ -959,8 +988,9 @@ async function assertCanAccessJob(
   }
 
   const companyId = await resolveCompanyId(user)
+  const meta = isRecord(data.metadata) ? data.metadata : {}
 
-  if (String(data.company_id) !== companyId) {
+  if (String(meta.company_id) !== companyId) {
     throw new Error("Lowongan ini bukan milik perusahaan Anda.")
   }
 }

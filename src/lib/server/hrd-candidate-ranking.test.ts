@@ -119,7 +119,7 @@ describe("buildAnonymousCandidateMatchRows", () => {
       {
         analysis_result_id: "analysis-row-backend",
         candidate_code: "Candidate ANBACKEND",
-        job_posting_id: "job-backend",
+        job_vacancy_id: "job-backend",
         matched_skills: ["Node.js", "PostgreSQL"],
         match_score: 100,
         role_title: "Backend Engineer",
@@ -127,7 +127,7 @@ describe("buildAnonymousCandidateMatchRows", () => {
       {
         analysis_result_id: "analysis-row-new",
         candidate_code: "Candidate ANNEW",
-        job_posting_id: "job-frontend",
+        job_vacancy_id: "job-frontend",
         matched_skills: ["React", "TypeScript"],
         match_score: 82,
         role_title: "Frontend Engineer",
@@ -135,7 +135,7 @@ describe("buildAnonymousCandidateMatchRows", () => {
       {
         analysis_result_id: "analysis-row-new",
         candidate_code: "Candidate ANNEW",
-        job_posting_id: "job-qa",
+        job_vacancy_id: "job-qa",
         matched_skills: ["Testing"],
         match_score: 70,
         role_title: "QA Engineer",
@@ -204,7 +204,7 @@ describe("buildAnonymousCandidateMatchRows", () => {
       {
         analysis_result_id: "analysis-row-generalist",
         candidate_code: "Candidate ANGENERALI",
-        job_posting_id: "job-generalist",
+        job_vacancy_id: "job-generalist",
         matched_skills: [],
         match_score: 100,
         role_title: "Generalist Recruiter",

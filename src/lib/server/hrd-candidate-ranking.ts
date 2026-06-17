@@ -18,7 +18,7 @@ export type CandidateRankingAnalysis = {
 export type AnonymousCandidateMatchRow = {
   analysis_result_id: string
   candidate_code: string
-  job_posting_id: string
+  job_vacancy_id: string
   matched_skills: string[]
   match_score: number
   role_title: string
@@ -52,7 +52,7 @@ export function buildAnonymousCandidateMatchRows(input: {
           return {
             analysis_result_id: analysis.id,
             candidate_code: createCandidateCode(analysis.analysisId),
-            job_posting_id: job.id,
+            job_vacancy_id: job.id,
             required_skills_count: job.requiredSkills.length,
             matched_skills: score.matchedSkills,
             match_score: Math.round(score.compatibilityScore),
