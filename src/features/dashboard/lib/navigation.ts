@@ -9,13 +9,13 @@ import {
   ShieldCheckIcon,
   UserIcon,
   UsersIcon,
-} from "lucide-react"
-import type { AppRole } from "@/features/auth/lib/role-routing"
+} from "lucide-react";
+import type { AppRole } from "@/features/auth/lib/role-routing";
 
 export interface SidebarItem {
-  label: string
-  href: string
-  icon: React.ElementType
+  label: string;
+  href: string;
+  icon: React.ElementType;
 }
 
 const jobseekerItems: SidebarItem[] = [
@@ -32,14 +32,14 @@ const jobseekerItems: SidebarItem[] = [
     icon: MessageSquareTextIcon,
   },
   { label: "Profile", href: "/jobseeker/profile", icon: UserIcon },
-]
+];
 
 const hrdItems: SidebarItem[] = [
   { label: "Portal", href: "/hrd/portal", icon: BriefcaseIcon },
   { label: "Kelola Lowongan", href: "/hrd/jobs", icon: BriefcaseIcon },
-  { label: "Kandidat Anonim", href: "/hrd/candidates", icon: UsersIcon },
+  { label: "Kandidat", href: "/hrd/candidates", icon: UsersIcon },
   { label: "Profile", href: "/hrd/profile", icon: UserIcon },
-]
+];
 
 const superadminItems: SidebarItem[] = [
   { label: "Monitoring", href: "/superadmin/monitoring", icon: ActivityIcon },
@@ -54,15 +54,15 @@ const superadminItems: SidebarItem[] = [
     icon: SettingsIcon,
   },
   { label: "Profile", href: "/superadmin/profile", icon: UserIcon },
-]
+];
 
 export function getNavigationItems(role: AppRole): SidebarItem[] {
   switch (role) {
     case "hrd":
-      return hrdItems
+      return hrdItems;
     case "superadmin":
-      return superadminItems
+      return superadminItems;
     default:
-      return jobseekerItems
+      return jobseekerItems;
   }
 }
