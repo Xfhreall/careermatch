@@ -26,10 +26,7 @@ export const hrdCandidateColumns: ColumnDef<AnonymousCandidateRecord>[] = [
     accessorKey: "skills",
     header: "Keahlian",
     cell: ({ row }) => {
-      const skills = (row.getValue("skills") as string)
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean)
+      const skills = row.original.matchedSkills
       return (
         <div className="flex flex-wrap gap-1">
           {skills.slice(0, 3).map((skill) => (
@@ -50,8 +47,15 @@ export const hrdCandidateColumns: ColumnDef<AnonymousCandidateRecord>[] = [
     accessorKey: "score",
     header: "Skor",
     cell: ({ row }) => {
-      const score = row.getValue("score") as string
-      return <Badge variant="default">{score}</Badge>
+      const candidate = row.original
+      return (
+        <div className="space-y-1">
+          <Badge variant="default">{candidate.score}</Badge>
+          <p className="text-muted-foreground text-xs tabular-nums">
+            {candidate.scoreValue}/100
+          </p>
+        </div>
+      )
     },
   },
 ]

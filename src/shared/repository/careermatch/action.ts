@@ -98,6 +98,7 @@ export async function markAnalysisJobStatus(
 
 export async function saveAnalysisResult(input: {
   jobId: string
+  jobVacancyId?: string
   rawResponse: unknown
   result: NormalizedAnalysisResponse
   userId: string
@@ -109,6 +110,7 @@ export async function saveAnalysisResult(input: {
       analysis_job_id: input.jobId,
       career_coaching: input.result.careerCoaching,
       job_matches: input.result.jobMatches,
+      job_vacancy_id: input.jobVacancyId ?? null,
       jobseeker_id: input.userId,
       overall_score: input.result.jobMatches[0]?.compatibilityScore ?? null,
       raw_response: input.rawResponse,
@@ -298,6 +300,31 @@ export async function getHrdDashboard(user: SessionUser, role: AccessRole) {
   return buildAnonymousCandidateDashboard({ companyId })
 }
 
+export async function listActiveVacancies(): Promise<
+  Array<{ id: string; title: string; company: string }>
+> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from("job_vacancies")
+    .select("id, role_name, company_name, metadata")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data ?? [])
+    .filter((row) => {
+      const meta = isRecord(row.metadata) ? row.metadata : {}
+      return meta.status === "active"
+    })
+    .map((row) => ({
+      id: String(row.id),
+      title: String(row.role_name ?? ""),
+      company: String(row.company_name ?? "CareerMatch Partner"),
+    }))
+}
+
 export async function createHrdJob(
   user: SessionUser,
   input: {
@@ -346,7 +373,9 @@ export async function refreshHrdEmbeddings(
   role: AccessRole
 ) {
   const supabase = getSupabaseAdmin()
-  let query = supabase.from("job_vacancies").select("id, metadata")
+  let query = supabase
+    .from("job_vacancies")
+    .select("id, content, role_name, job_description, metadata")
 
   if (role !== "superadmin") {
     query = query.eq("metadata->>company_id", await resolveCompanyId(user))
@@ -358,16 +387,41 @@ export async function refreshHrdEmbeddings(
     throw new Error(error.message)
   }
 
+  const webhookUrl = process.env.N8N_EMBEDDING_WEBHOOK_URL ?? process.env.N8N_WEBHOOK_URL
+  if (!webhookUrl) {
+    throw new Error("N8N_WEBHOOK_URL belum dikonfigurasi di server.")
+  }
+
   for (const job of data ?? []) {
     const meta = isRecord(job.metadata) ? job.metadata : {}
-    if (meta.status === "active" && meta.embedding_status !== "synced") {
-      await supabase
-        .from("job_vacancies")
-        .update({
-          metadata: { ...meta, embedding_status: "synced" },
-        })
-        .eq("id", String(job.id))
+    if (meta.status !== "active" || meta.embedding_status === "synced") {
+      continue
     }
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: String(job.id),
+        content: String(job.content ?? job.job_description ?? ""),
+        role_name: String(job.role_name ?? ""),
+        metadata: meta,
+      }),
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(
+        `n8n embedding webhook gagal untuk job ${job.id}: ${response.status} ${body}`
+      )
+    }
+
+    // n8n handles writing the embedding vector back to Supabase.
+    // We only mark pending → processing so we don't re-send the same job.
+    await supabase
+      .from("job_vacancies")
+      .update({ metadata: { ...meta, embedding_status: "processing" } })
+      .eq("id", String(job.id))
   }
 }
 
@@ -912,9 +966,12 @@ async function buildAnonymousCandidateDashboard(options?: {
     anonymousCandidates: rows.slice(0, 20).map((row) => ({
       candidate: row.candidate_code,
       email: row.candidate_email,
+      jobId: row.job_vacancy_id,
+      matchedSkills: row.matched_skills,
       name: row.candidate_name,
       role: row.role_title,
       score: `${Math.round(row.match_score)}%`,
+      scoreValue: Math.round(row.match_score),
       skills: row.matched_skills.join(", "),
     })),
     jobs: jobs.map((job) => ({

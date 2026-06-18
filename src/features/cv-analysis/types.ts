@@ -8,6 +8,7 @@ export type CandidateProfile = {
 export type AppliedJob = {
   jobDescription: string
   jobTitle: string
+  jobVacancyId?: string
 }
 
 export type JobMatch = {

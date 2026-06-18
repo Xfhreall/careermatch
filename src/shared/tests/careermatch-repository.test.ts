@@ -149,9 +149,106 @@ describe("getSuperadminSnapshot", () => {
       {
         candidate: "Candidate AN1",
         email: "candidate@example.com",
+        jobId: "job-1",
+        matchedSkills: ["TypeScript"],
         name: "Candidate One",
         role: "Job job-1",
         score: "100%",
+        scoreValue: 100,
+        skills: "TypeScript",
+      },
+    ])
+  })
+
+  it("surfaces nested raw webhook candidate profiles on the HRD dashboard", async () => {
+    rowsByTable.set("job_vacancies", [createJob("job-1", "active")])
+    rowsByTable.set("analysis_results", [
+      {
+        analysis_id: "analysis-raw-profile",
+        created_at: "2026-06-17T10:00:00.000Z",
+        id: "analysis-row-raw-profile",
+        jobseeker_id: "user-1",
+        response_payload: {
+          rawResponse: {
+            candidate_profile: {
+              skills: ["TypeScript", "React"],
+              total_experience_years: 3,
+            },
+            unblinded_cv: {
+              email: "raw-profile@example.com",
+              name: "Raw Profile Candidate",
+            },
+          },
+        },
+      },
+    ])
+    rowsByTable.set("users", [])
+
+    const dashboard = await getHrdDashboard(
+      {
+        companyId: "company-1",
+        email: "hrd@example.com",
+        id: "hrd-1",
+      },
+      "hrd"
+    )
+
+    expect(dashboard.anonymousCandidates).toEqual([
+      {
+        candidate: "Candidate ANPROFILE",
+        email: "raw-profile@example.com",
+        jobId: "job-1",
+        matchedSkills: ["TypeScript"],
+        name: "Raw Profile Candidate",
+        role: "Job job-1",
+        score: "100%",
+        scoreValue: 100,
+        skills: "TypeScript",
+      },
+    ])
+  })
+
+  it("surfaces top-level raw webhook candidate profiles on the HRD dashboard", async () => {
+    rowsByTable.set("job_vacancies", [createJob("job-1", "active")])
+    rowsByTable.set("analysis_results", [
+      {
+        analysis_id: "analysis-top-level-profile",
+        created_at: "2026-06-17T10:00:00.000Z",
+        id: "analysis-row-top-level-profile",
+        jobseeker_id: "user-1",
+        response_payload: {
+          candidate_profile: {
+            skills: "TypeScript, React",
+            total_experience_years: "3",
+          },
+          unblinded_cv: {
+            email: "top-level@example.com",
+            name: "Top Level Candidate",
+          },
+        },
+      },
+    ])
+    rowsByTable.set("users", [])
+
+    const dashboard = await getHrdDashboard(
+      {
+        companyId: "company-1",
+        email: "hrd@example.com",
+        id: "hrd-1",
+      },
+      "hrd"
+    )
+
+    expect(dashboard.anonymousCandidates).toEqual([
+      {
+        candidate: "Candidate ANPROFILE",
+        email: "top-level@example.com",
+        jobId: "job-1",
+        matchedSkills: ["TypeScript"],
+        name: "Top Level Candidate",
+        role: "Job job-1",
+        score: "100%",
+        scoreValue: 100,
         skills: "TypeScript",
       },
     ])

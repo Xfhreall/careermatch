@@ -22,6 +22,9 @@ export function buildAnalyzeCvFormData(
   body.append("job_title", input.jobTitle.trim())
   body.append("job_description", input.jobDescription.trim())
   body.append("session_id", sessionId)
+  if (input.jobVacancyId) {
+    body.append("job_vacancy_id", input.jobVacancyId)
+  }
 
   return body
 }
@@ -65,6 +68,32 @@ export async function analyzeCvRequest(
   }
 
   return normalizeAnalysisResponse(payload, { appliedJob })
+}
+
+export async function fetchActiveVacancies(): Promise<
+  Array<{ id: string; title: string; company: string }>
+> {
+  const response = await fetchApp("/api/cv/vacancies")
+  const payload = await readResponsePayload(response)
+
+  if (!response.ok) {
+    throw new Error(readErrorMessage(payload, response.status))
+  }
+
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "vacancies" in payload &&
+    Array.isArray(payload.vacancies)
+  ) {
+    return payload.vacancies as Array<{
+      id: string
+      title: string
+      company: string
+    }>
+  }
+
+  return []
 }
 
 export async function fetchAnalysisHistory(): Promise<AnalysisHistoryItem[]> {

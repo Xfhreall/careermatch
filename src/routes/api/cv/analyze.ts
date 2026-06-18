@@ -44,6 +44,9 @@ export const Route = createFileRoute("/api/cv/analyze")({
         const jobDescription = stringFromFormValue(
           incomingForm.get("job_description")
         )
+        const jobVacancyId = stringFromFormValue(
+          incomingForm.get("job_vacancy_id")
+        )
 
         if (!(cvValue instanceof File)) {
           return Response.json(
@@ -148,6 +151,7 @@ export const Route = createFileRoute("/api/cv/analyze")({
         try {
           await saveAnalysisResult({
             jobId: analysisJobId,
+            jobVacancyId,
             rawResponse: payload,
             result,
             userId: auth.session.user.id,

@@ -279,4 +279,50 @@ describe("buildAnonymousCandidateMatchRows", () => {
       },
     ])
   })
+
+  it("matches candidates from raw webhook candidate_profile payloads", () => {
+    const rows = buildAnonymousCandidateMatchRows({
+      analyses: [
+        {
+          analysisId: "analysis-raw-profile",
+          createdAt: "2026-06-17T13:00:00.000Z",
+          id: "analysis-row-raw-profile",
+          jobseekerId: "user-8",
+          responsePayload: {
+            rawResponse: {
+              candidate_profile: {
+                skills: ["React", "TypeScript"],
+                total_experience_years: 3,
+              },
+              unblinded_cv: {
+                email: "raw-profile@example.com",
+                name: "Raw Profile Candidate",
+              },
+            },
+          },
+        },
+      ],
+      jobs: [
+        {
+          id: "job-raw-profile",
+          minExperienceYears: 2,
+          requiredSkills: ["React", "TypeScript"],
+          title: "Frontend Engineer",
+        },
+      ],
+    })
+
+    expect(rows).toEqual([
+      {
+        analysis_result_id: "analysis-row-raw-profile",
+        candidate_code: "Candidate ANPROFILE",
+        candidate_email: "raw-profile@example.com",
+        candidate_name: "Raw Profile Candidate",
+        job_vacancy_id: "job-raw-profile",
+        matched_skills: ["React", "TypeScript"],
+        match_score: 100,
+        role_title: "Frontend Engineer",
+      },
+    ])
+  })
 })

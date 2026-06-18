@@ -13,9 +13,12 @@ export type HrdJobRecord = {
 export type AnonymousCandidateRecord = {
   candidate: string
   email: string
+  jobId: string
+  matchedSkills: string[]
   name: string
   role: string
   score: string
+  scoreValue: number
   skills: string
 }
 

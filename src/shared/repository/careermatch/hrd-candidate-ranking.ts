@@ -145,7 +145,14 @@ function selectLatestAnalyses(analyses: CandidateRankingAnalysis[]) {
 }
 
 function readCandidateProfile(analysis: CandidateRankingAnalysis) {
-  const profile = analysis.candidateProfile
+  const responsePayload = analysis.responsePayload
+  const rawResponse = isRecord(responsePayload?.rawResponse)
+    ? responsePayload.rawResponse
+    : null
+  const profile =
+    analysis.candidateProfile ??
+    readCandidateProfileValue(responsePayload) ??
+    readCandidateProfileValue(rawResponse)
 
   if (!profile) {
     return null
@@ -164,6 +171,29 @@ function readCandidateProfile(analysis: CandidateRankingAnalysis) {
     candidateName: contact.name,
     skills,
     totalExperienceYears: Number(profile.totalExperienceYears ?? 0),
+  }
+}
+
+function readCandidateProfileValue(value: unknown): CandidateProfile | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const profileValue =
+    value.candidate_profile ?? value.candidateProfile ?? value.candidate
+
+  if (!isRecord(profileValue)) {
+    return null
+  }
+
+  return {
+    raw: profileValue,
+    skills: stringArrayFrom(profileValue.skills ?? profileValue.skill_set),
+    totalExperienceYears: numberFrom(
+      profileValue.total_experience_years ??
+        profileValue.totalExperienceYears ??
+        profileValue.experience_years
+    ),
   }
 }
 
@@ -245,6 +275,35 @@ function firstString(value: unknown, keys: string[]): string | undefined {
   }
 
   return undefined
+}
+
+function numberFrom(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.replace("%", ""))
+
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  return undefined
+}
+
+function stringArrayFrom(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean)
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/[,;\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+
+  return []
 }
 
 function uniqueJobSkills(skills: string[]) {

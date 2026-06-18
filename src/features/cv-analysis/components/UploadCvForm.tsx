@@ -33,6 +33,7 @@ import { cn } from "@/shared/lib/utils"
 import {
   type AnalyzeCvInput,
   analyzeCvRequest,
+  fetchActiveVacancies,
 } from "@/shared/repository/cv-analysis/action"
 import { getFileExtension, trackCareerMatchEvent } from "../analytics"
 import { useAnalyzeCv } from "../hooks/use-analyze-cv"
@@ -43,6 +44,7 @@ type UploadCvFormValues = {
   cv: File | null
   jobDescription: string
   jobTitle: string
+  jobVacancyId: string
 }
 
 type UploadCvFormProps = {
@@ -101,8 +103,17 @@ export function UploadCvForm({
   const [dragActive, setDragActive] = React.useState(false)
   const [submitError, setSubmitError] = React.useState("")
   const [activeStep, setActiveStep] = React.useState(0)
+  const [vacancies, setVacancies] = React.useState<
+    Array<{ id: string; title: string; company: string }>
+  >([])
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const shouldReduceMotion = useReducedMotion()
+
+  React.useEffect(() => {
+    fetchActiveVacancies()
+      .then(setVacancies)
+      .catch(() => {})
+  }, [])
 
   const mutation = useAnalyzeCv({
     analyzeCv,
@@ -119,6 +130,7 @@ export function UploadCvForm({
       cv: null,
       jobDescription: "",
       jobTitle: "",
+      jobVacancyId: "",
     } as UploadCvFormValues,
     onSubmit: async ({ value }) => {
       setSubmitError("")
@@ -164,6 +176,7 @@ export function UploadCvForm({
         file,
         jobDescription,
         jobTitle,
+        jobVacancyId: value.jobVacancyId || undefined,
       })
     },
   })
@@ -419,6 +432,44 @@ export function UploadCvForm({
             </form.Field>
 
             <FieldGroup>
+              {vacancies.length > 0 && (
+                <form.Field name="jobVacancyId">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel htmlFor="job-vacancy">
+                        Pilih Lowongan (Opsional)
+                      </FieldLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                        id="job-vacancy"
+                        onBlur={field.handleBlur}
+                        onChange={(event) => {
+                          const selected = vacancies.find(
+                            (v) => v.id === event.target.value
+                          )
+                          field.handleChange(event.target.value)
+                          if (selected) {
+                            form.setFieldValue("jobTitle", selected.title)
+                          }
+                        }}
+                        value={field.state.value}
+                      >
+                        <option value="">-- Pilih dari lowongan aktif --</option>
+                        {vacancies.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.title} — {v.company}
+                          </option>
+                        ))}
+                      </select>
+                      <FieldDescription>
+                        Pilih lowongan HRD agar hasil analisis terhubung ke
+                        sistem rekrutmen.
+                      </FieldDescription>
+                    </Field>
+                  )}
+                </form.Field>
+              )}
+
               <form.Field name="jobTitle">
                 {(field) => (
                   <Field>

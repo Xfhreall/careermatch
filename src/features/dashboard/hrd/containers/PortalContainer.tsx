@@ -4,6 +4,8 @@ import {
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
+  TargetIcon,
+  TrophyIcon,
   UsersIcon,
 } from "lucide-react"
 import * as React from "react"
@@ -33,6 +35,7 @@ import {
   FieldLabel,
 } from "@/shared/components/shadcn/ui/field"
 import { Input } from "@/shared/components/shadcn/ui/input"
+import { Progress } from "@/shared/components/shadcn/ui/progress"
 
 export function HrdPortalContainer() {
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -45,6 +48,31 @@ export function HrdPortalContainer() {
   const refreshMutation = useRefreshHrdEmbeddingsMutation()
   const jobs = dashboardQuery.data?.jobs ?? []
   const anonymousCandidates = dashboardQuery.data?.anonymousCandidates ?? []
+  const activeJobs = jobs.filter((job) => job.status === "Active")
+  const topCandidate = anonymousCandidates[0]
+  const averageScore =
+    anonymousCandidates.length > 0
+      ? Math.round(
+          anonymousCandidates.reduce(
+            (total, candidate) => total + candidate.scoreValue,
+            0
+          ) / anonymousCandidates.length
+        )
+      : 0
+  const matchedRoleCount = new Set(
+    anonymousCandidates.map((candidate) => candidate.jobId)
+  ).size
+  const candidatesByJob = new Map<string, typeof anonymousCandidates>()
+
+  for (const candidate of anonymousCandidates) {
+    const current = candidatesByJob.get(candidate.jobId)
+
+    if (current) {
+      current.push(candidate)
+    } else {
+      candidatesByJob.set(candidate.jobId, [candidate])
+    }
+  }
   const createForm = useForm({
     defaultValues: {
       description: "",
@@ -123,42 +151,90 @@ export function HrdPortalContainer() {
             New job
           </Button>
         </div>
+        <div className="grid gap-0 border-border border-b sm:grid-cols-3">
+          <div className="border-border border-b p-5 sm:border-r sm:border-b-0">
+            <p className="text-muted-foreground text-sm">Matched candidates</p>
+            <p className="mt-2 font-medium text-3xl">
+              {anonymousCandidates.length}
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              {formatCandidateLabel(anonymousCandidates.length)}
+            </p>
+          </div>
+          <div className="border-border border-b p-5 sm:border-r sm:border-b-0">
+            <p className="text-muted-foreground text-sm">Average score</p>
+            <p className="mt-2 font-medium text-3xl">{averageScore}%</p>
+            <Progress className="mt-3" value={averageScore} />
+          </div>
+          <div className="p-5">
+            <p className="text-muted-foreground text-sm">Matched roles</p>
+            <p className="mt-2 font-medium text-3xl">
+              {matchedRoleCount}/{activeJobs.length}
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              active roles with at least one candidate
+            </p>
+          </div>
+        </div>
         <div className="divide-y divide-border">
           {jobs.length > 0 ? (
-            jobs.map((job) => (
-              <div
-                className="grid gap-4 p-5 md:grid-cols-[1fr_auto]"
-                key={job.id}
-              >
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium text-xl">{job.title}</h3>
-                    <Badge variant="outline">{job.company}</Badge>
-                    <Badge className="bg-accent text-accent-foreground">
-                      {job.embedding}
-                    </Badge>
-                    <Badge variant="secondary">{job.status}</Badge>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {job.skills.map((skill) => (
-                      <Badge key={skill} variant="secondary">
-                        {skill}
+            jobs.map((job) => {
+              const jobCandidates = candidatesByJob.get(job.id) ?? []
+              const jobTopCandidate = jobCandidates[0]
+
+              return (
+                <div
+                  className="grid gap-4 p-5 md:grid-cols-[1fr_auto]"
+                  key={job.id}
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-medium text-xl">{job.title}</h3>
+                      <Badge variant="outline">{job.company}</Badge>
+                      <Badge className="bg-accent text-accent-foreground">
+                        {job.embedding}
                       </Badge>
-                    ))}
+                      <Badge variant="secondary">{job.status}</Badge>
+                      {jobTopCandidate ? (
+                        <Badge variant="outline">
+                          Top match {jobTopCandidate.score}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {job.skills.map((skill) => (
+                        <Badge key={skill} variant="secondary">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-muted-foreground text-sm">
+                      Minimum experience: {job.minYears} tahun
+                    </p>
+                    {jobTopCandidate ? (
+                      <div className="mt-4 max-w-xl">
+                        <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                          <span className="text-muted-foreground">
+                            Best candidate: {jobTopCandidate.name}
+                          </span>
+                          <span className="font-medium">
+                            {jobTopCandidate.score}
+                          </span>
+                        </div>
+                        <Progress value={jobTopCandidate.scoreValue} />
+                      </div>
+                    ) : null}
                   </div>
-                  <p className="mt-3 text-muted-foreground text-sm">
-                    Minimum experience: {job.minYears} tahun
-                  </p>
+                  <div className="flex items-center gap-3 md:justify-end">
+                    <UsersIcon aria-hidden="true" className="size-4" />
+                    <span className="font-medium">{job.candidates}</span>
+                    <span className="text-muted-foreground text-sm">
+                      candidates
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 md:justify-end">
-                  <UsersIcon aria-hidden="true" className="size-4" />
-                  <span className="font-medium">{job.candidates}</span>
-                  <span className="text-muted-foreground text-sm">
-                    candidates
-                  </span>
-                </div>
-              </div>
-            ))
+              )
+            })
           ) : (
             <p className="p-5 text-muted-foreground text-sm">
               Belum ada lowongan untuk role ini.
@@ -192,6 +268,18 @@ export function HrdPortalContainer() {
         <div className="border-border border-b p-6">
           <p className="text-muted-foreground text-sm">Matched candidates</p>
           <h2 className="font-medium text-3xl">Candidate ranking</h2>
+          {topCandidate ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge className="bg-primary text-primary-foreground">
+                <TrophyIcon aria-hidden="true" className="size-3.5" />
+                Top match {topCandidate.score}
+              </Badge>
+              <Badge variant="outline">
+                <TargetIcon aria-hidden="true" className="size-3.5" />
+                {topCandidate.role}
+              </Badge>
+            </div>
+          ) : null}
         </div>
         <div className="divide-y divide-border">
           {anonymousCandidates.length > 0 ? (
@@ -211,14 +299,29 @@ export function HrdPortalContainer() {
                     <p className="mt-1 text-muted-foreground text-sm">
                       {candidate.role}
                     </p>
-                    <p className="mt-2 text-muted-foreground text-xs">
-                      Matched skills: {candidate.skills}
-                    </p>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {candidate.matchedSkills.length > 0 ? (
+                        candidate.matchedSkills.map((skill) => (
+                          <Badge
+                            className="text-xs"
+                            key={`${candidate.candidate}-${skill}`}
+                            variant="secondary"
+                          >
+                            {skill}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-xs">
+                          No matched skills listed
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <Badge className="bg-accent text-accent-foreground">
                     {candidate.score}
                   </Badge>
                 </div>
+                <Progress className="mt-4" value={candidate.scoreValue} />
               </div>
             ))
           ) : (
@@ -338,4 +441,8 @@ export function HrdPortalContainer() {
       </Dialog>
     </section>
   )
+}
+
+function formatCandidateLabel(count: number) {
+  return count === 1 ? "1 kandidat cocok" : `${count} kandidat cocok`
 }
