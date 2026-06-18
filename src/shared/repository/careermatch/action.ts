@@ -387,7 +387,8 @@ export async function refreshHrdEmbeddings(
     throw new Error(error.message)
   }
 
-  const webhookUrl = process.env.N8N_EMBEDDING_WEBHOOK_URL ?? process.env.N8N_WEBHOOK_URL
+  const webhookUrl =
+    process.env.N8N_EMBEDDING_WEBHOOK_URL ?? process.env.N8N_WEBHOOK_URL
   if (!webhookUrl) {
     throw new Error("N8N_WEBHOOK_URL belum dikonfigurasi di server.")
   }

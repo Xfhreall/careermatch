@@ -454,7 +454,9 @@ export function UploadCvForm({
                         }}
                         value={field.state.value}
                       >
-                        <option value="">-- Pilih dari lowongan aktif --</option>
+                        <option value="">
+                          -- Pilih dari lowongan aktif --
+                        </option>
                         {vacancies.map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.title} — {v.company}
