@@ -1,6 +1,16 @@
 # CareerMatch
 
-> **AI-Powered CV Analysis & Job Matching Platform** — Upload CV, dapatkan analisis kecocokan dengan lowongan kerja, skill gap assessment, dan career coaching berbasis AI.
+> **AI-Powered CV Analysis & Job Matching Platform**
+>
+> Upload your CV and get AI-powered analysis of job compatibility, skill gaps, and personalized career coaching. Designed for jobseekers seeking the perfect career match and HR teams screening candidates efficiently.
+
+**Core Features:**
+- CV Upload and Parsing — Support PDF, DOC, DOCX formats
+- AI Job Matching — Intelligent matching powered by n8n AI pipeline
+- Compatibility Scoring — Percentage-based job fit analysis
+- Skill Gap Analysis — Identify missing and matching skills
+- Career Coaching — AI-generated interview prep and career recommendations
+- Multi-role System — Jobseeker, HR, and Superadmin dashboards
 
 ---
 
@@ -8,146 +18,148 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19, TanStack Router, TanStack React Query, TanStack Table, TanStack Start |
+| **Frontend** | React 19, TanStack Router, TanStack React Query, TanStack Table |
 | **Styling** | Tailwind CSS v4, shadcn/ui, Framer Motion, Lucide Icons |
 | **Backend** | TanStack Start (SSR + API Routes) via Cloudflare Workers |
-| **Database** | Supabase |
-| **Auth** | Better Auth |
-| **AI Pipeline** | n8n Webhook (external workflow untuk CV parsing & job matching) |
+| **Database** | Supabase (PostgreSQL) |
+| **Authentication** | Better Auth with Google OAuth |
+| **AI Pipeline** | n8n Webhook (external CV parsing and job matching workflow) |
 | **DB Client** | Supabase JS Client |
 | **Validation** | Zod |
-| **Deployment** | Cloudflare Workers + Alchemy |
+| **Deployment** | Cloudflare Workers via Alchemy |
 | **Language** | TypeScript |
 | **Package Manager** | Bun |
-| **Linting/Formatting** | Biome |
+| **Code Quality** | Biome (linting and formatting) |
 
 ---
 
-## Folder Structure
+## Project Structure
 
 ```
 careermatch/
 ├── public/                  # Static assets (favicon, manifest, robots.txt)
 │
 ├── src/
-│   ├── features/            # Feature-based modules
-│   │   ├── auth/            # Auth components, routing, user queries
-│   │   ├── cv-analysis/     # CV analysis (upload, normalize, results, types)
-│   │   ├── dashboard/       # Dashboard layouts, HRD/Superadmin/Jobseeker containers
-│   │   └── platform/        # Platform-level API client, types, components
+│   ├── features/            # Feature-based modules organized by domain
+│   │   ├── auth/            # Authentication (login, signup, user queries)
+│   │   ├── cv-analysis/     # CV upload, parsing, normalization, results display
+│   │   ├── dashboard/       # Role-specific dashboards (Jobseeker, HRD, Superadmin)
+│   │   └── platform/        # Platform utilities and shared API client
 │   │
-│   ├── lib/                 # Shared utilities
-│   │   ├── server/          # Server-only (Supabase admin, auth, repository)
+│   ├── hooks/               # Custom React hooks
+│   │
+│   ├── lib/                 # Shared utilities and configuration
+│   │   ├── server/          # Server-only utilities (Supabase admin, auth, data access)
 │   │   ├── auth.ts          # Better Auth server configuration
-│   │   ├── auth-client.ts   # Better Auth client configuration
-│   │   └── password.ts      # Password utilities
+│   │   ├── auth-client.ts   # Better Auth client-side configuration
+│   │   └── password.ts      # Password hashing and verification utilities
 │   │
-│   ├── routes/              # TanStack Router file-based routing
+│   ├── routes/              # TanStack Router file-based routing structure
 │   │   ├── api/             # Server API routes
-│   │   │   ├── account/     # Profile & password management
-│   │   │   ├── auth/        # Better Auth endpoints
-│   │   │   ├── cv/          # CV analysis, history, results
-│   │   │   ├── hrd/         # HRD dashboard, jobs, embeddings
-│   │   │   └── superadmin/  # Super admin snapshot, approvals, config
-│   │   ├── hrd/             # HRD pages (portal, jobs, candidates, profile)
-│   │   ├── jobseeker/       # Jobseeker pages (dashboard, analyze, history)
-│   │   ├── superadmin/      # Superadmin pages (approvals, monitoring, config)
-│   │   ├── interview/       # Interview coach page
-│   │   ├── platform/        # Architecture page
-│   │   ├── __root.tsx       # Root layout
+│   │   │   ├── account/     # User profile and password management endpoints
+│   │   │   ├── auth/        # Better Auth OAuth and session endpoints
+│   │   │   ├── cv/          # CV analysis submission and result retrieval
+│   │   │   ├── hrd/         # HRD job and candidate management endpoints
+│   │   │   └── superadmin/  # Admin configuration and approval endpoints
+│   │   ├── hrd/             # HRD role pages (dashboard, job listings, candidates)
+│   │   ├── jobseeker/       # Jobseeker role pages (dashboard, CV analysis, history)
+│   │   ├── superadmin/      # Superadmin role pages (approvals, monitoring)
+│   │   ├── interview/       # Interview preparation and coaching page
+│   │   ├── platform/        # Platform architecture documentation page
+│   │   ├── __root.tsx       # Root layout wrapper
 │   │   ├── index.tsx        # Landing page
-│   │   └── login.tsx        # Login page
+│   │   └── login.tsx        # Authentication page
 │   │
-│   ├── shared/              # Shared UI components
-│   │   ├── components/      # DataTable, shadcn/ui components, Stepper
-│   │   └── lib/             # Shared utilities
+│   ├── shared/              # Shared UI components and utilities
+│   │   ├── components/      # Reusable components (DataTable, Stepper, shadcn/ui)
+│   │   └── lib/             # Shared utility functions
 │   │
-│   ├── start.ts             # TanStack Start instance (middleware, CSRF, roles)
-│   ├── router.tsx           # Router configuration
-│   ├── routeTree.gen.ts     # Auto-generated route tree
-│   └── styles.css           # Tailwind + shadcn + fonts
+│   ├── start.ts             # TanStack Start server configuration
+│   ├── router.tsx           # Router setup and configuration
+│   ├── routeTree.gen.ts     # Auto-generated route tree (do not edit)
+│   └── styles.css           # Global styles (Tailwind CSS, shadcn/ui, custom fonts)
 │
-├── supabase/
-│   ├── migrations/          # Database migrations (SQL)
-│   ├── seed.sql             # Seed data
+├── supabase/                # Database migrations and seeding
+│   ├── migrations/          # SQL migration files
+│   ├── seed.sql             # Initial seed data
 │   └── README.md
 │
-├── .agents/                 # AI agent skill definitions (development aids)
-├── alchemy.run.ts           # Cloudflare Workers infrastructure (Alchemy)
-├── vite.config.ts           # Vite build configuration
-├── nitro.config.ts          # Nitro server configuration
-├── tsconfig.json            # TypeScript configuration
-├── biome.json               # Biome linter/formatter config
-├── components.json          # shadcn/ui configuration
-├── package.json
+├── .agents/                 # AI agent skill definitions for development
+├── alchemy.run.ts           # Cloudflare Workers deployment configuration
+├── vite.config.ts           # Vite bundler configuration
+├── nitro.config.ts          # Nitro server configuration for TanStack Start
+├── tsconfig.json            # TypeScript compiler options
+├── biome.json               # Biome code quality configuration
+├── components.json          # shadcn/ui component registry
+├── package.json             # Dependencies and scripts
 └── .env.example             # Environment variables template
 ```
 
 ---
 
-## Setup & Development
+## Getting Started
 
 ### Prerequisites
 
-- **Bun** (package manager & runtime) — [install](https://bun.sh)
-- **Cloudflare account + API token** — untuk deploy via Alchemy
+- **Bun** (package manager and runtime) — [install](https://bun.sh)
+- **Cloudflare account with API token** — for deploying via Alchemy
 - **Supabase project** — [supabase.com](https://supabase.com)
 - **Google OAuth credentials** — for Better Auth Google login
-- **n8n webhook URL** — for AI CV analysis pipeline (opsional untuk development)
+- **n8n webhook URL** — for AI CV analysis pipeline (optional for development)
 
-### 1. Clone & Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 bun install
 ```
 
-### 2. Environment Variables
+### 2. Environment Configuration
 
-Salin `.env.example` ke `.env` dan isi konfigurasi:
+Copy `.env.example` to `.env` and fill in your configuration:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Deskripsi |
+| Variable | Description |
 |----------|-----------|
-| `N8N_WEBHOOK_URL` | Webhook n8n untuk AI job matching pipeline |
-| `CHATBOT_URL` | Webhook n8n untuk interview/chatbot jobseeker |
-| `BETTER_AUTH_URL` | URL aplikasi (http://localhost:3000 untuk dev) |
-| `BETTER_AUTH_SECRET` | Secret key untuk Better Auth |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `N8N_WEBHOOK_URL` | Webhook URL for n8n AI job matching pipeline |
+| `CHATBOT_URL` | Webhook URL for n8n interview and career coaching |
+| `BETTER_AUTH_URL` | Application URL (http://localhost:3000 for development) |
+| `BETTER_AUTH_SECRET` | Secret key for Better Auth sessions |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID for social login |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
-| `DATABASE_URL` | PostgreSQL connection string; dipakai Alchemy sebagai origin Hyperdrive |
-| `SUPABASE_POOLER_URL` | Optional override untuk origin Hyperdrive jika ingin memakai Supabase pooler |
+| `DATABASE_URL` | PostgreSQL connection string for Hyperdrive origin |
+| `SUPABASE_POOLER_URL` | Optional Supabase connection pooler URL |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side) |
-| `SUPABASE_DB_PASSWORD` | Password Supabase database |
-| `ALCHEMY_PASSWORD` | Password enkripsi secret Alchemy; wajib dan harus stabil antar deploy |
-| `ALCHEMY_STATE_TOKEN` | Token persistent state store Alchemy di Cloudflare (wajib untuk CI) |
-| `CLOUDFLARE_API_TOKEN` | Token Cloudflare untuk deploy Alchemy |
-| `CLOUDFLARE_ACCOUNT_ID` | Account ID Cloudflare |
-| `CLOUDFLARE_WORKER_NAME` | Nama Worker production (opsional, default `careermatch-capstone`) |
+| `SUPABASE_ANON_KEY` | Supabase public anonymous key (client-side) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `SUPABASE_DB_PASSWORD` | Supabase database password |
+| `ALCHEMY_PASSWORD` | Encryption password for Alchemy secrets (must be stable across deployments) |
+| `ALCHEMY_STATE_TOKEN` | Alchemy persistent state token for Cloudflare (required for CI) |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token for deploying Alchemy |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
+| `CLOUDFLARE_WORKER_NAME` | Production Worker name (optional, defaults to `careermatch-capstone`) |
 
-> **Security:** jangan commit `.env`, `.dev.vars`, `.alchemy`, atau `wrangler.toml`. Production secret harus disimpan di GitHub Secrets atau secret manager lokal, lalu dibaca oleh `alchemy.run.ts` via `process.env` dan `alchemy.secret()`.
+Security note: Never commit `.env`, `.dev.vars`, `.alchemy`, or `wrangler.toml`. Store production secrets in GitHub Secrets, which are read by `alchemy.run.ts` via `process.env` and `alchemy.secret()`.
 
 ### 3. Database Setup
 
-CareerMatch menggunakan Supabase sebagai database. Migration SQL ada di:
+CareerMatch uses Supabase as the PostgreSQL database. Migrations are located in:
 
-```bash
+```
 supabase/migrations/20260518180000_careermatch_production.sql
 ```
 
-Jalankan migration:
+Run migrations:
 
 ```bash
 bun run db:push
 ```
 
-Atau import langsung SQL file ke Supabase SQL Editor.
+Alternatively, import the SQL file directly into Supabase SQL Editor.
 
-Seed data (opsional):
+Optional seed data:
 
 ```bash
 bun run db:seed
@@ -155,146 +167,149 @@ bun run db:seed
 
 ### 4. Development Server
 
-Default development server sekarang jalan lewat Alchemy. Command ini akan build `.output` lebih dulu, lalu menjalankan Worker lokal di port 3000:
+The development server runs via Alchemy. This command builds `.output` first, then starts the local Worker on port 3000:
 
 ```bash
 bun run dev
 ```
 
-Aplikasi akan berjalan di **http://localhost:3000**
+The application will be available at **http://localhost:3000**
 
-Jika hanya ingin Vite dev server tanpa Cloudflare/Alchemy, gunakan:
+For Vite dev server without Cloudflare/Alchemy:
 
 ```bash
 bun run dev:vite
 ```
 
-### 5. Build & Deploy
+### 5. Build and Deploy
 
-**Build:**
+Build for production:
 
 ```bash
 bun run build
 ```
 
-**Deploy ke Cloudflare Workers via Alchemy:**
+Deploy to Cloudflare Workers via Alchemy:
 
 ```bash
 bun run deploy:build
 ```
 
-Atau gunakan GitHub Actions (lihat `.github/workflows/deploy.yml`). Pastikan semua variable production tersedia sebagai **GitHub Secrets**, bukan file repo.
+For automated deployment, use GitHub Actions (see `.github/workflows/deploy.yml`). Ensure all production variables are set as GitHub Secrets, not in the repository.
 
 ---
 
-## Role & Akses
+## User Roles and Access Control
 
-Aplikasi memiliki 3 role pengguna:
+The application has three user roles with different access levels:
 
-| Role | Akses |
-|------|-------|
-| **Jobseeker** | Upload CV, analisis kecocokan, lihat hasil + career coaching |
-| **HRD** | Kelola lowongan kerja, lihat kandidat anonim yang cocok |
-| **Superadmin** | Approve HRD, atur konfigurasi scoring/model, monitoring |
-
----
-
-## Fitur Utama
-
-### Untuk Jobseeker
-- **Upload CV** — PDF, DOC, DOCX (max 10MB)
-- **AI Job Matching** — CV dianalisis oleh AI pipeline (n8n), dicocokkan dengan lowongan yang tersedia
-- **Compatibility Score** — Skor kecocokan dalam persentase (0-100%)
-- **Skill Gap Analysis** — Skill yang cocok vs skill yang kurang
-- **Experience Match** — Perbandingan tahun pengalaman kandidat dengan requirement
-- **Career Coaching** — Rekomendasi karir & pertanyaan interview berbasis AI
-- **Riwayat Analisis** — Semua hasil analisis tersimpan, bisa diexport
-- **Export Laporan** — Download laporan hasil analisis (.txt)
-
-### Untuk HRD
-- **Kelola Lowongan** — CRUD job posting (title, description, skills, min experience)
-- **Candidate Matching** — Lihat kandidat anonim yang cocok dengan lowongan (match score, matched skills)
-- **Embedding Refresh** — Sinkronisasi embedding lowongan
-- **Portal HRD** — Dashboard ringkasan lowongan & kandidat
-
-### Untuk Superadmin
-- **Approval HRD** — Setujui/tolak pendaftaran HRD baru
-- **Scoring Config** — Atur bobot scoring untuk AI matching
-- **Model Config** — Konfigurasi model AI per agent
-- **Monitoring** — Metrik & audit events
+| Role | Permissions |
+|------|-------------|
+| **Jobseeker** | Upload CV, analyze job compatibility, view results and career coaching recommendations |
+| **HR** | Manage job postings, view anonymized matching candidates, refresh job embeddings |
+| **Superadmin** | Approve new HR registrations, configure scoring weights and AI models, monitor system metrics |
 
 ---
 
-## Arsitektur Analisis CV
+## Core Features
+
+### For Jobseekers
+
+- **CV Upload and Parsing** — Support for PDF, DOC, DOCX formats (max 10MB)
+- **AI-Powered Job Matching** — CV analyzed by n8n AI pipeline and matched against available job postings
+- **Compatibility Scoring** — Numerical job fit score (0-100%) for each matched position
+- **Skill Gap Analysis** — Detailed comparison of candidate skills vs job requirements
+- **Experience Matching** — Years of experience alignment between candidate and job
+- **Career Coaching** — AI-generated interview preparation questions and career recommendations
+- **Analysis History** — Persistent storage of all previous analyses for reference
+- **Report Export** — Download analysis results as text files for offline review
+
+### For HR Teams
+
+- **Job Posting Management** — Create, read, update, and delete job listings with detailed specifications
+- **Candidate Matching** — View anonymized candidates ranked by compatibility with specific jobs
+- **Embedding Synchronization** — Refresh and update job embeddings for accurate matching
+- **HR Dashboard** — Centralized overview of posted jobs and candidate pipeline
+
+### For Superadmin
+
+- **HR Registration Approval** — Review and approve or reject new HR account registrations
+- **Scoring Configuration** — Adjust weights and parameters for AI matching algorithm
+- **AI Model Configuration** — Configure and manage AI models used by different agents
+- **System Monitoring** — View system metrics, audit logs, and performance analytics
+
+---
+
+## CV Analysis Architecture
 
 ```
-User Upload CV (PDF/DOC)
-        │
-        ▼
+User uploads CV (PDF/DOC)
+        |
+        v
 TanStack Start API Route (/api/cv/analyze)
-        │
-        ├── Upload ke Supabase Storage
-        ├── Buat analysis_job (status: processing)
-        │
-        ▼
-Forward CV ke n8n Webhook (AI Pipeline)
-        │
-        ▼
-n8n melakukan:
-  ├── Parse CV (AI/LLM)
-  ├── Cocokkan dengan job posting
-  ├── Hitung compatibility score
-  ├── Identifikasi skill gap
-  └── Generate career coaching
-        │
-        ▼
-Response dinormalisasi → disimpan ke Supabase
-        │
-        ▼
-User melihat hasil (3 tab):
-  ├── Job Matches (ranking + score)
-  ├── Career Coach (rekomendasi)
-  └── Full Report (raw response)
+        |
+        +-- Upload file to Supabase Storage
+        +-- Create analysis_job record (status: processing)
+        |
+        v
+Forward CV to n8n Webhook (External AI Pipeline)
+        |
+        v
+n8n performs:
+  +-- Parse and extract CV data
+  +-- Match against job postings
+  +-- Calculate compatibility scores
+  +-- Identify skill gaps
+  +-- Generate career coaching recommendations
+        |
+        v
+Normalize response and save to Supabase
+        |
+        v
+User views results in three tabs:
+  +-- Job Matches (ranked by score)
+  +-- Career Coaching (recommendations)
+  +-- Full Report (raw analysis data)
 ```
 
-> **Catatan:** Logika AI matching ada di **n8n workflow eksternal**, bukan di kode aplikasi ini. Aplikasi bertugas sebagai middleware: menerima upload, mengirim ke n8n, menormalisasi response, dan menampilkan hasil.
+Note: The AI matching logic resides in the external n8n workflow, not in this application code. This application serves as middleware: it receives uploads, forwards them to n8n, normalizes responses, and displays results to users.
 
 ---
 
-## Scripts
+## Available Scripts
 
-| Script | Deskripsi |
-|--------|-----------|
-| `bun run dev` | Build lalu jalankan Worker lokal via Alchemy (port 3000) |
-| `bun run dev:alchemy` | Sama seperti `dev`; eksplisit memakai Alchemy |
-| `bun run dev:vite` | Jalankan Vite dev server biasa tanpa Alchemy |
-| `bun run build` | Build production |
-| `bun run preview` | Preview production build |
-| `bun run deploy` | Deploy output build ke Cloudflare via Alchemy menggunakan Node runtime |
-| `bun run deploy:build` | Build lalu deploy ke Cloudflare via Alchemy |
-| `bun run test` | Jalankan test (Vitest) |
-| `bun run lint` | Lint dengan Biome |
-| `bun run format` | Format kode dengan Biome |
-| `bun run typecheck` | TypeScript type checking |
-| `bun run db:push` | Push migrasi ke Supabase |
-| `bun run db:seed` | Seed data ke Supabase |
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Build and start local Worker via Alchemy on port 3000 |
+| `bun run dev:alchemy` | Same as `dev`; explicitly uses Alchemy |
+| `bun run dev:vite` | Run Vite dev server without Alchemy or Cloudflare |
+| `bun run build` | Build for production |
+| `bun run preview` | Preview production build locally |
+| `bun run deploy` | Deploy built output to Cloudflare via Alchemy using Node runtime |
+| `bun run deploy:build` | Build and deploy to Cloudflare via Alchemy in one command |
+| `bun run test` | Run test suite with Vitest |
+| `bun run lint` | Lint code with Biome |
+| `bun run format` | Format code with Biome |
+| `bun run typecheck` | Run TypeScript type checking |
+| `bun run db:push` | Push database migrations to Supabase |
+| `bun run db:seed` | Seed initial data into Supabase |
 
 ---
 
 ## Deployment
 
-Deployment otomatis via **GitHub Actions** (`.github/workflows/deploy.yml`) ke **Cloudflare Workers** menggunakan **Alchemy**.
+Automated deployment occurs via **GitHub Actions** (`.github/workflows/deploy.yml`) to **Cloudflare Workers** using **Alchemy**.
 
-Konfigurasi Worker ada di `alchemy.run.ts`:
-- Runtime: `nodejs_compat`
-- Assets: `.output/public`
-- Entrypoint: `.output/server/index.mjs`
-- Binding: Hyperdrive, `AUTH_KV`, dan environment secret via `alchemy.secret()`
-- Observability: traces & logs enabled
+Worker configuration is defined in `alchemy.run.ts`:
+- **Runtime:** nodejs_compat
+- **Assets:** .output/public (static files)
+- **Entrypoint:** .output/server/index.mjs
+- **Bindings:** Hyperdrive database, AUTH_KV store, and environment secrets via `alchemy.secret()`
+- **Observability:** Traces and logs enabled
 
-Secret deployment tidak disimpan di repo. Untuk CI, set minimal GitHub Secrets berikut:
+Deployment secrets are not stored in the repository. For CI/CD, set the following GitHub Secrets:
 
-```text
+```
 ALCHEMY_PASSWORD
 ALCHEMY_STATE_TOKEN
 CLOUDFLARE_API_TOKEN
@@ -312,18 +327,101 @@ SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_DB_PASSWORD
 ```
 
-`CLOUDFLARE_WORKER_NAME` opsional jika ingin override nama Worker.
+Optional: `CLOUDFLARE_WORKER_NAME` to override the default Worker name.
 
-`ALCHEMY_PASSWORD` dan `ALCHEMY_STATE_TOKEN` harus bernilai random panjang dan stabil antar deploy. Contoh generate lokal:
+Both `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` must be long random values that remain stable across deployments. Generate locally with:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Simpan hasilnya sebagai GitHub Secret `ALCHEMY_STATE_TOKEN`.
+Save the output as the GitHub Secret `ALCHEMY_STATE_TOKEN`.
+
+---
+
+## Development Workflow
+
+### Local Development
+
+1. Start the development server:
+   ```bash
+   bun run dev
+   ```
+
+2. Open http://localhost:3000 in your browser
+
+3. Create a test account or use existing credentials to explore features
+
+4. Make changes to source files; the dev server will hot-reload
+
+### Testing
+
+Run the test suite:
+
+```bash
+bun run test
+```
+
+Run tests in watch mode:
+
+```bash
+bun run test --watch
+```
+
+### Code Quality
+
+Lint code:
+
+```bash
+bun run lint
+```
+
+Format code:
+
+```bash
+bun run format
+```
+
+Check TypeScript types:
+
+```bash
+bun run typecheck
+```
+
+---
+
+## Troubleshooting
+
+### Port 3000 Already in Use
+
+If port 3000 is already in use, modify the Alchemy configuration in `alchemy.run.ts` or set the `PORT` environment variable before running `bun run dev`.
+
+### Database Connection Issues
+
+Ensure your `DATABASE_URL` and Supabase credentials are correct in `.env`. Test the connection by running `bun run db:push`.
+
+### Authentication Failing
+
+Verify that `BETTER_AUTH_URL` matches your application URL and that Google OAuth credentials are correctly set in `.env`.
+
+### n8n Webhook Errors
+
+If CV analysis fails, check that `N8N_WEBHOOK_URL` is accessible and the n8n workflow is active and properly configured.
+
+---
+
+## Contributing
+
+When contributing to CareerMatch:
+
+1. Create a feature branch from `main`
+2. Make your changes and test locally
+3. Run linting and formatting: `bun run format && bun run lint`
+4. Run tests to ensure nothing breaks: `bun run test`
+5. Create a pull request with a clear description of changes
 
 ---
 
 ## License
 
-Proyek ini adalah capstone project.
+This project is a capstone project.
