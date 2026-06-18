@@ -36,13 +36,24 @@ export function normalizeAnalysisResponse(
   const parsedInput = parseMaybeJson(input)
 
   if (isNormalizedRecord(parsedInput)) {
+    const rawRoot = isRecord(parsedInput.rawResponse)
+      ? parsedInput.rawResponse
+      : isRecord(parsedInput)
+        ? parsedInput
+        : undefined
+    const existingProfile = normalizeExistingCandidateProfile(
+      parsedInput.candidateProfile
+    )
+    const candidateProfile =
+      existingProfile?.skills?.length
+        ? existingProfile
+        : (normalizeCandidateProfile(rawRoot) ?? existingProfile)
+
     return {
       analysisId: parsedInput.analysisId,
       appliedJob:
         normalizeAppliedJob(parsedInput.appliedJob) ?? options.appliedJob,
-      candidateProfile: normalizeExistingCandidateProfile(
-        parsedInput.candidateProfile
-      ),
+      candidateProfile,
       careerCoaching: stringFrom(parsedInput.careerCoaching) ?? "",
       jobMatches: parsedInput.jobMatches.map(normalizeJobMatch),
       rawResponse: parsedInput.rawResponse ?? parsedInput,

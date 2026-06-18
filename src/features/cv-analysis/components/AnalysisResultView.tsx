@@ -117,12 +117,16 @@ export function AnalysisResultView({
       value: formatScore(topMatch?.compatibilityScore),
       helper: topMatch?.jobTitle ?? "Belum tersedia",
     },
-    {
-      icon: ListChecksIcon,
-      label: "Skill terdeteksi",
-      value: String(candidateSkills.length),
-      helper: "Dari profil kandidat",
-    },
+    ...(candidateSkills.length > 0
+      ? [
+          {
+            icon: ListChecksIcon,
+            label: "Skill terdeteksi",
+            value: String(candidateSkills.length),
+            helper: "Dari profil kandidat",
+          },
+        ]
+      : []),
   ]
 
   function handleReset() {
@@ -762,10 +766,12 @@ function FullReport({
           label="Top match"
           value={formatScore(result.jobMatches[0]?.compatibilityScore)}
         />
-        <ReportMetric
-          label="Skill terdeteksi"
-          value={String(result.candidateProfile?.skills?.length ?? 0)}
-        />
+        {(result.candidateProfile?.skills?.length ?? 0) > 0 ? (
+          <ReportMetric
+            label="Skill terdeteksi"
+            value={String(result.candidateProfile?.skills?.length)}
+          />
+        ) : null}
       </div>
 
       {sections.length > 0 ? (
